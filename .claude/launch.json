@@ -1,0 +1,17 @@
+{
+	"version": "0.0.1",
+	"configurations": [
+		{
+			"name": "waitloom",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run", "dev"],
+			"port": 3000
+		},
+		{
+			"name": "waitloom-worker",
+			"runtimeExecutable": "npx",
+			"runtimeArgs": ["opennextjs-cloudflare", "preview", "--", "--port", "8788"],
+			"port": 8788
+		}
+	]
+}

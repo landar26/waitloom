@@ -34,10 +34,13 @@
 		"build": "next build",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv env.d.ts",
 		"check": "npm run build && tsc",
-		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+		"db:migrate": "wrangler d1 migrations apply DB --remote",
+		"db:migrate:local": "wrangler d1 migrations apply DB --local",
+		"deploy": "npm run db:migrate && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
 		"dev": "next dev",
 		"lint": "next lint",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+		"secrets:push": "bash scripts/put-secrets.sh",
 		"start": "next start"
 	}
 }

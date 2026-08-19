@@ -8,6 +8,23 @@
 	"main": ".open-next/worker.js",
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"routes": [
+		{
+			"pattern": "waitloom.app",
+			"custom_domain": true
+		}
+	],
+	"vars": {
+		"NEXT_PUBLIC_SITE_URL": "https://waitloom.app"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "waitloom-db",
+			"database_id": "2630d814-43e2-46d5-abba-d9b7e89eb10f",
+			"migrations_dir": "migrations"
+		}
+	],
 	"assets": {
 		"binding": "ASSETS",
 		"directory": ".open-next/assets"
