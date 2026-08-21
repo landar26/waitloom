@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getTotals } from "@/lib/analytics";
+import { isLinkCta } from "@/lib/content";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { projectUrl } from "@/lib/host";
@@ -69,7 +70,11 @@ export default async function DashboardPage() {
 				<div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 					{projects.map((project) => {
 						const visitors = traffic.get(project.id)?.visitors ?? 0;
-						const signups = subscribers.get(project.id) ?? 0;
+						// A link-CTA page counts clicks where a waitlist page counts signups.
+						const linkCta = isLinkCta(project.content.cta);
+						const signups = linkCta
+							? (traffic.get(project.id)?.clicks ?? 0)
+							: (subscribers.get(project.id) ?? 0);
 						const live = project.status === "published";
 
 						return (
@@ -101,9 +106,12 @@ export default async function DashboardPage() {
 
 								<div className="mt-5 grid grid-cols-3 gap-2 border-t border-line-soft pt-4">
 									<Metric label={t.views} value={visitors} />
-									<Metric label={t.subscribers} value={signups} />
 									<Metric
-										label={t.conversion}
+										label={linkCta ? t.clicks : t.subscribers}
+										value={signups}
+									/>
+									<Metric
+										label={linkCta ? t.clickRate : t.conversion}
 										value={
 											visitors > 0 ? `${((signups / visitors) * 100).toFixed(1)}%` : "—"
 										}

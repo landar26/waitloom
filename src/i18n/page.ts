@@ -10,6 +10,7 @@ export const pageEn = {
 	sections: {
 		features: "What you get",
 		howItWorks: "How it works",
+		pricing: "Pricing",
 		faq: "Questions",
 		founder: "Who's building this",
 		waitlist: "Get early access",
@@ -33,6 +34,7 @@ export const pageEn = {
 		successBody: "We'll let you know the moment it's live.",
 		alreadyIn: "You're already on the list.",
 		previewNote: "Preview — signups are disabled here.",
+		linkNote: "Preview — the link opens on the published page.",
 	},
 	switcher: {
 		label: "Language",
@@ -53,6 +55,7 @@ export const pageZh: PageDict = {
 	sections: {
 		features: "你会得到什么",
 		howItWorks: "如何使用",
+		pricing: "价格",
 		faq: "常见问题",
 		founder: "关于开发者",
 		waitlist: "抢先体验",
@@ -76,6 +79,7 @@ export const pageZh: PageDict = {
 		successBody: "上线的那一刻就会通知你。",
 		alreadyIn: "你已经在名单上了。",
 		previewNote: "预览模式 —— 这里无法真正提交。",
+		linkNote: "预览模式 —— 链接在已发布的页面上才会打开。",
 	},
 	switcher: {
 		label: "语言",

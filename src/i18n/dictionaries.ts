@@ -102,7 +102,9 @@ export const en = {
 	features: {
 		eyebrow: "Features",
 		title: "Everything you need before launch.",
-		subtitle: "And deliberately nothing you don't.",
+		subtitle:
+			"And deliberately nothing you don't. It doesn't expire on launch day " +
+			"either — point the button at your product and the same page keeps going.",
 		items: [
 			{
 				title: "Beautiful page",
@@ -163,6 +165,10 @@ export const en = {
 			{
 				q: "Can I use my own domain?",
 				a: "Not yet. Every page gets a yourname.waitloom.app subdomain today, and custom domains are the next thing on the list.",
+			},
+			{
+				q: "What happens to my page after I launch?",
+				a: "It keeps working. Switch the button from the email form to a link — your App Store page, your download, your sign-up — and the waitlist section becomes optional. Add a pricing block if you have one. Same URL, same page, now doing the job of a small official site while the product is still finding its first users.",
 			},
 			{
 				q: "Who owns the emails I collect?",
@@ -284,7 +290,8 @@ export const zh: Dict = {
 	features: {
 		eyebrow: "功能",
 		title: "上线之前需要的，这里都有。",
-		subtitle: "不需要的，一个也不给。",
+		subtitle:
+			"不需要的，一个也不给。上线那天它也不会作废 —— 把按钮指向你的产品，同一个页面继续用。",
 		items: [
 			{
 				title: "漂亮的页面",
@@ -345,6 +352,10 @@ export const zh: Dict = {
 			{
 				q: "能绑我自己的域名吗？",
 				a: "还不行。目前每个页面都有自己的 yourname.waitloom.app 子域名，自定义域名是接下来要做的第一件事。",
+			},
+			{
+				q: "产品上线之后这个页面怎么办？",
+				a: "继续用。把按钮从邮箱表单换成一个链接 —— App Store、下载地址、注册入口都行 —— 等待名单板块就变成可选的了。有价格的话再打开价格板块。同一个网址、同一个页面，在产品还在找最初那批用户的阶段，它就是一个够用的官网。",
 			},
 			{
 				q: "收集到的邮箱归谁？",

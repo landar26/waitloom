@@ -4,6 +4,7 @@ import { PublishPanel } from "@/components/dash/publish-panel";
 import { Stat } from "@/components/dash/stats";
 import { getAppDict } from "@/i18n/app";
 import { getTraffic } from "@/lib/analytics";
+import { isLinkCta } from "@/lib/content";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { projectUrl } from "@/lib/host";
@@ -37,9 +38,13 @@ export default async function OverviewPage({
 	const t = dict.overview;
 
 	const signups30 = stats.series.reduce((n, d) => n + d.count, 0);
-	const conversion = traffic.visitors
-		? `${((signups30 / traffic.visitors) * 100).toFixed(1)}%`
-		: "—";
+	const rate = (n: number) =>
+		traffic.visitors ? `${((n / traffic.visitors) * 100).toFixed(1)}%` : "—";
+
+	// A page whose CTA is a link has no signups to convert; its conversion is the
+	// click that sent someone at the product. The waitlist tab still holds the
+	// subscriber count for a page running both.
+	const linkCta = isLinkCta(project.content.cta);
 
 	return (
 		<main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
@@ -52,8 +57,16 @@ export default async function OverviewPage({
 
 			<div className="mt-4 grid gap-4 sm:grid-cols-3">
 				<Stat label={t.visitors} value={traffic.visitors} hint={t.last30} />
-				<Stat label={t.subscribers} value={stats.total} hint={`+${stats.last7} · 7d`} />
-				<Stat label={t.conversion} value={conversion} hint={t.last30} />
+				{linkCta ? (
+					<Stat label={t.clicks} value={traffic.clicks} hint={t.last30} />
+				) : (
+					<Stat label={t.subscribers} value={stats.total} hint={`+${stats.last7} · 7d`} />
+				)}
+				<Stat
+					label={linkCta ? t.clickRate : t.conversion}
+					value={rate(linkCta ? traffic.clicks : signups30)}
+					hint={t.last30}
+				/>
 			</div>
 
 			<div className="mt-4 rounded-xl border border-line bg-ink-2 p-5">

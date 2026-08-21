@@ -6,7 +6,7 @@ import { LANG_SHORT, type Lang } from "@/i18n/dictionaries";
 import { contentFor, localesOf } from "@/lib/content";
 import { getDb } from "@/lib/db";
 import { negotiateLang } from "@/lib/lang";
-import { projectLocaleUrl, projectUrl } from "@/lib/host";
+import { projectLangUrl, projectLocaleUrl, projectUrl } from "@/lib/host";
 import { limitsFor } from "@/lib/plans";
 import {
 	getPublishedProject,
@@ -138,7 +138,10 @@ export default async function PublishedPage({
 					locales: locales.map((code) => ({
 						code,
 						label: LANG_SHORT[code],
-						href: projectLocaleUrl(project.slug, code, project.lang, host),
+						// Not projectLocaleUrl: the primary language's canonical URL is the
+						// bare one, which re-negotiates from Accept-Language and would make
+						// clicking it a no-op for anyone whose browser prefers the other.
+						href: projectLangUrl(project.slug, code, host),
 					})),
 					templateId: project.template_id,
 					theme: project.theme,

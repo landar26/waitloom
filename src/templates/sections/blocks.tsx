@@ -2,6 +2,7 @@ import type { ProjectContent } from "@/lib/content";
 import type { PageDict } from "@/i18n/page";
 import type { TemplateSpec } from "../registry";
 import { Container, Heading, Section } from "./chrome";
+import { linkify } from "./linkify";
 
 /** The optional sections, in the order they may appear. */
 
@@ -113,6 +114,92 @@ export function HowItWorks({
 	);
 }
 
+/**
+ * A price table for a page whose product is already shipped. Same card
+ * vocabulary as Features — only `highlight` adds anything, and it adds the
+ * accent border rather than a second card design.
+ */
+export function Pricing({
+	content,
+	spec,
+	dict,
+}: {
+	content: ProjectContent;
+	spec: TemplateSpec;
+	dict: PageDict;
+}) {
+	if (content.pricing.length === 0) return null;
+
+	return (
+		<Section rules={spec.shape.rules}>
+			<Heading title={dict.sections.pricing} align={spec.shape.align} />
+			<div
+				className={`mt-9 grid gap-5 ${
+					content.pricing.length > 2 ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2"
+				}`}
+			>
+				{content.pricing.map((plan, i) => (
+					<div
+						key={i}
+						className="flex flex-col rounded-[var(--wl-radius)] border-[length:var(--wl-border-width)] bg-[var(--wl-surface)] p-6"
+						style={{
+							borderColor: plan.highlight ? "var(--wl-accent)" : "var(--wl-border-soft)",
+							boxShadow: plan.highlight ? "var(--wl-shadow)" : undefined,
+						}}
+					>
+						{plan.name && (
+							<p className="text-[14px] text-[var(--wl-muted)]">{plan.name}</p>
+						)}
+						{plan.price && (
+							<p className="mt-1.5 flex items-baseline gap-1.5">
+								<span
+									className="text-[28px] leading-none text-[var(--wl-fg)]"
+									style={{
+										fontWeight: "var(--wl-heading-weight)" as unknown as number,
+										letterSpacing: "var(--wl-tracking)",
+									}}
+								>
+									{plan.price}
+								</span>
+								{plan.period && (
+									<span className="text-[13.5px] text-[var(--wl-dim)]">{plan.period}</span>
+								)}
+							</p>
+						)}
+
+						{plan.points.length > 0 && (
+							<ul className="mt-5 space-y-2">
+								{plan.points.map((point, j) => (
+									<li
+										key={j}
+										className="flex gap-2.5 text-[14.5px] leading-relaxed text-[var(--wl-muted)]"
+									>
+										<span aria-hidden className="text-[var(--wl-accent)]">
+											·
+										</span>
+										{point}
+									</li>
+								))}
+							</ul>
+						)}
+
+						{plan.ctaLabel && plan.ctaHref && (
+							<a
+								href={plan.ctaHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="mt-6 inline-flex justify-center rounded-[var(--wl-control)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] px-4 py-2.5 text-[13.5px] text-[var(--wl-fg)] transition-colors hover:border-[var(--wl-accent)] hover:text-[var(--wl-accent)]"
+							>
+								{plan.ctaLabel}
+							</a>
+						)}
+					</div>
+				))}
+			</div>
+		</Section>
+	);
+}
+
 export function Faq({
 	content,
 	spec,
@@ -184,8 +271,8 @@ export function Founder({
 						</p>
 					)}
 					{bio && (
-						<p className="mt-1.5 text-[14.5px] leading-relaxed text-[var(--wl-muted)]">
-							{bio}
+						<p className="mt-1.5 text-[14.5px] leading-relaxed text-[var(--wl-muted)] [overflow-wrap:anywhere]">
+							{linkify(bio)}
 						</p>
 					)}
 				</div>

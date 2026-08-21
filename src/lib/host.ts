@@ -83,10 +83,27 @@ export function projectUrl(slug: string, requestHost?: string | null): string {
 }
 
 /**
- * Where a published page is read in one language. The primary language keeps
- * the bare URL; the others get a `/zh`-style path, which middleware unwraps.
- * The local path form has no route for that segment, so it carries the
- * language as a search param instead.
+ * A published page pinned to one language, the primary one included. The bare
+ * URL negotiates from Accept-Language, so it is not a link a visitor can use to
+ * *reach* a language — one whose browser asks for another could never click
+ * their way back to the page's own. The language switcher links here.
+ *
+ * A `/zh`-style path, which middleware unwraps. The local path form has no
+ * route for that segment, so it carries the language as a search param instead.
+ */
+export function projectLangUrl(
+	slug: string,
+	lang: string,
+	requestHost?: string | null,
+): string {
+	const base = projectUrl(slug, requestHost);
+	return requestHost && isLocal(requestHost) ? `${base}?lang=${lang}` : `${base}/${lang}`;
+}
+
+/**
+ * Where a published page is read in one language, canonically: the primary
+ * language keeps the bare URL, the others get their own. This is what belongs
+ * in canonical, hreflang and the sitemap — not what a switcher should link to.
  */
 export function projectLocaleUrl(
 	slug: string,
@@ -94,7 +111,6 @@ export function projectLocaleUrl(
 	primaryLang: string,
 	requestHost?: string | null,
 ): string {
-	const base = projectUrl(slug, requestHost);
-	if (lang === primaryLang) return base;
-	return requestHost && isLocal(requestHost) ? `${base}?lang=${lang}` : `${base}/${lang}`;
+	if (lang === primaryLang) return projectUrl(slug, requestHost);
+	return projectLangUrl(slug, lang, requestHost);
 }

@@ -1,12 +1,21 @@
 import type { CSSProperties } from "react";
 import { getPageDict } from "@/i18n/page";
-import type { ProjectContent, SectionId } from "@/lib/content";
+import { isLinkCta, type ProjectContent, type SectionId } from "@/lib/content";
+import { CtaLink } from "@/components/public/cta-link";
 import {
 	ProjectWaitlistForm,
 	type PublicQuestion,
 } from "@/components/public/project-waitlist-form";
 import { getTemplate } from "./registry";
-import { Faq, Features, Founder, HowItWorks, Screenshot, Social } from "./sections/blocks";
+import {
+	Faq,
+	Features,
+	Founder,
+	HowItWorks,
+	Pricing,
+	Screenshot,
+	Social,
+} from "./sections/blocks";
 import {
 	Heading,
 	PageFooter,
@@ -61,6 +70,7 @@ export function TemplatePage({
 	});
 
 	const on = (id: SectionId) => sections.includes(id);
+	const linkCta = isLinkCta(content.cta);
 	const ctaLabel = content.ctaLabel || dict.form.join;
 
 	const form = (instanceId: string) => (
@@ -68,11 +78,18 @@ export function TemplatePage({
 			slug={project.slug}
 			questions={questions}
 			dict={dict}
-			ctaLabel={ctaLabel}
+			// Once the label belongs to the link button, the form that may still sit
+			// below it has to ask for something else than "Download".
+			ctaLabel={linkCta ? dict.form.join : ctaLabel}
 			preview={preview}
 			instanceId={instanceId}
 		/>
 	);
+
+	// The header sends people at the product if there is one, and otherwise at a
+	// form: the closing block when the page keeps it, the hero's own when it does
+	// not. There is always one of the two, so the button never goes nowhere.
+	const headerHref = linkCta ? content.cta.href : on("waitlist") ? "#waitlist" : "#cta";
 
 	return (
 		<div
@@ -91,6 +108,8 @@ export function TemplatePage({
 				name={project.name}
 				logoUrl={content.logoUrl}
 				ctaLabel={ctaLabel}
+				ctaHref={headerHref}
+				ctaExternal={linkCta}
 				rules={spec.shape.rules}
 				locales={project.locales ?? []}
 				activeLocale={project.lang}
@@ -104,36 +123,52 @@ export function TemplatePage({
 					content={content}
 					name={project.name}
 					slug={project.slug}
-					form={form("hero")}
+					cta={
+						linkCta ? (
+							<CtaLink
+								slug={project.slug}
+								href={content.cta.href}
+								label={ctaLabel}
+								dict={dict}
+								preview={preview}
+							/>
+						) : (
+							form("hero")
+						)
+					}
 				/>
 
 				{on("screenshot") && <Screenshot url={content.screenshotUrl} spec={spec} />}
 				{on("features") && <Features content={content} spec={spec} dict={dict} />}
 				{on("howItWorks") && <HowItWorks content={content} spec={spec} dict={dict} />}
+				{on("pricing") && <Pricing content={content} spec={spec} dict={dict} />}
 				{on("faq") && <Faq content={content} spec={spec} dict={dict} />}
 				{on("founder") && <Founder content={content} spec={spec} dict={dict} />}
 				{on("social") && <Social content={content} spec={spec} />}
 
 				{/*
 				  The waitlist block always closes the page, whatever position it
-				  holds in SECTIONS: the hero already carries a form, so this one is
-				  the second ask, and a second ask belongs at the end of the story.
+				  holds in SECTIONS: the hero already carries the first ask, so this
+				  one is the second, and a second ask belongs at the end of the story.
+				  Being the second is also why it is the founder's to switch off.
 				*/}
-				<Section id="waitlist" rules={spec.shape.rules}>
-					<div
-						className="rounded-[var(--wl-radius)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] bg-[var(--wl-surface)] px-6 py-10 sm:px-10"
-						style={{ boxShadow: "var(--wl-shadow)" }}
-					>
-						<div className={spec.shape.align === "center" ? "mx-auto max-w-lg" : "max-w-lg"}>
-							<Heading
-								title={dict.sections.waitlist}
-								subtitle={dict.sections.waitlistSubtitle}
-								align={spec.shape.align}
-							/>
-							<div className="mt-7">{form("footer")}</div>
+				{on("waitlist") && (
+					<Section id="waitlist" rules={spec.shape.rules}>
+						<div
+							className="rounded-[var(--wl-radius)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] bg-[var(--wl-surface)] px-6 py-10 sm:px-10"
+							style={{ boxShadow: "var(--wl-shadow)" }}
+						>
+							<div className={spec.shape.align === "center" ? "mx-auto max-w-lg" : "max-w-lg"}>
+								<Heading
+									title={dict.sections.waitlist}
+									subtitle={dict.sections.waitlistSubtitle}
+									align={spec.shape.align}
+								/>
+								<div className="mt-7">{form("footer")}</div>
+							</div>
 						</div>
-					</div>
-				</Section>
+					</Section>
+				)}
 			</main>
 
 			<PageFooter

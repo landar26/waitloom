@@ -13,13 +13,14 @@ export function Hero({
 	content,
 	name,
 	slug,
-	form,
+	cta,
 }: {
 	spec: TemplateSpec;
 	content: ProjectContent;
 	name: string;
 	slug: string;
-	form: ReactNode;
+	/** The waitlist form, or the button that replaces it after launch. */
+	cta: ReactNode;
 }) {
 	const centered = spec.shape.align === "center";
 	const headline = content.headline || name;
@@ -64,8 +65,10 @@ export function Hero({
 						</p>
 					)}
 
-					<div className={`mt-8 ${centered ? "mx-auto max-w-lg" : "max-w-lg"}`}>
-						{form}
+					{/* Named so the header can point here when the page has dropped the
+					    closing waitlist block and this is the only ask left. */}
+					<div id="cta" className={`mt-8 ${centered ? "mx-auto max-w-lg" : "max-w-lg"}`}>
+						{cta}
 					</div>
 				</div>
 			</Container>

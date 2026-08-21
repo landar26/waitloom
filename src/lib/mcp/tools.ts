@@ -3,9 +3,10 @@ import { DEFAULT_TEMPLATE_ID, TEMPLATES } from "@/templates/registry";
 import { ACCENTS, FONTS, THEMES } from "@/templates/style";
 import { getTotals, getTraffic } from "../analytics";
 import {
-	LOCKED_SECTIONS,
 	MAX_FAQ,
 	MAX_FEATURES,
+	MAX_PLANS,
+	MAX_PLAN_POINTS,
 	MAX_STEPS,
 	SECTIONS,
 	localesOf,
@@ -141,7 +142,27 @@ const CONTENT_SCHEMA = {
 		logoUrl: { type: "string" },
 		headline: { type: "string", description: "The hero headline. Up to 90 characters." },
 		subheadline: { type: "string" },
-		ctaLabel: { type: "string", description: "The waitlist button's label." },
+		ctaLabel: {
+			type: "string",
+			description: "The main button's label, whichever thing it does.",
+		},
+		cta: {
+			type: "object",
+			description:
+				"What the main button does. `waitlist` collects emails; `link` sends " +
+				"people at the product itself, which is what a page kept after launch " +
+				"wants. Read from `content` whatever language a visitor is in, so it " +
+				"is ignored inside `translations`.",
+			properties: {
+				mode: { type: "string", enum: ["waitlist", "link"] },
+				href: {
+					type: "string",
+					description:
+						"http(s) only. A `link` mode with no href behaves as `waitlist`, " +
+						"rather than rendering a button that goes nowhere.",
+				},
+			},
+		},
 		screenshotUrl: { type: "string" },
 		features: {
 			type: "array",
@@ -157,6 +178,29 @@ const CONTENT_SCHEMA = {
 			items: {
 				type: "object",
 				properties: { title: { type: "string" }, body: { type: "string" } },
+			},
+		},
+		pricing: {
+			type: "array",
+			maxItems: MAX_PLANS,
+			description:
+				"Plans for the `pricing` section. `ctaHref` and `highlight` are read " +
+				"from `content` in every language, like `cta`.",
+			items: {
+				type: "object",
+				properties: {
+					name: { type: "string" },
+					price: { type: "string", description: 'Written out, e.g. "$9".' },
+					period: { type: "string", description: 'e.g. "per month".' },
+					points: {
+						type: "array",
+						maxItems: MAX_PLAN_POINTS,
+						items: { type: "string" },
+					},
+					ctaLabel: { type: "string" },
+					ctaHref: { type: "string" },
+					highlight: { type: "boolean" },
+				},
 			},
 		},
 		faq: {
@@ -338,8 +382,8 @@ const TOOLS: Tool[] = [
 					type: "array",
 					items: { type: "string", enum: [...SECTIONS] },
 					description:
-						`Which sections appear, in order. ${LOCKED_SECTIONS.join(" and ")} ` +
-						`are always kept.`,
+						"Which sections appear, in order. Only `hero` is always kept — the " +
+						"waitlist block is the page's second ask and may be switched off.",
 				},
 				content: { ...CONTENT_SCHEMA, description: "The page document, in `lang`." },
 				translations: {

@@ -3,13 +3,17 @@
 import type { AppDict } from "@/i18n/app";
 import { LANGS, LANG_LABELS, type Lang } from "@/i18n/dictionaries";
 import {
-	LOCKED_SECTIONS,
 	MAX_FAQ,
 	MAX_FEATURES,
+	MAX_PLANS,
+	MAX_PLAN_POINTS,
+	LOCKED_SECTIONS,
 	MAX_STEPS,
 	SECTIONS,
 	localesOf,
 	sanitizeContent,
+	type Cta,
+	type Plan,
 	type ProjectContent,
 	type SectionId,
 	type Translations,
@@ -55,6 +59,18 @@ type PanelProps = {
 function activeContent({ draft, editing }: PanelProps): ProjectContent {
 	if (editing === draft.lang) return draft.content;
 	return draft.translations[editing] ?? sanitizeContent({});
+}
+
+/**
+ * The call to action is the page's, not one language's: `mergeContent` reads it
+ * from the primary document whichever language a visitor lands in. So it is
+ * written there too, whatever tab the founder happens to be on.
+ */
+function setCta(props: PanelProps, partial: Partial<Cta>): void {
+	const { draft } = props;
+	props.patch({
+		content: { ...draft.content, cta: { ...draft.content.cta, ...partial } },
+	});
 }
 
 function setContent(props: PanelProps, partial: Partial<ProjectContent>): void {
@@ -190,13 +206,56 @@ export function LocaleTabs({
 }
 
 export function ContentPanel(props: PanelProps) {
-	const { draft, dict, projectId } = props;
+	const { draft, dict, projectId, editing } = props;
 	const t = dict.editor.fields;
 	const c = activeContent(props);
 	const has = (id: SectionId) => draft.sections.includes(id);
 
 	return (
 		<div className="space-y-5">
+			{/*
+			  First, not fifth: this switch decides whether the page collects emails
+			  or sends people at a shipped product, which is what every field below
+			  it is written for. Framed rather than another Field for the same reason.
+			*/}
+			<div className="space-y-3 rounded-xl border border-line bg-ink-2 p-3.5">
+				<Field label={t.ctaMode}>
+					<div className="flex flex-wrap gap-2">
+						{(["waitlist", "link"] as const).map((mode) => (
+							<Chip
+								key={mode}
+								active={draft.content.cta.mode === mode}
+								onClick={() => setCta(props, { mode })}
+							>
+								{mode === "waitlist" ? t.ctaWaitlist : t.ctaLink}
+							</Chip>
+						))}
+					</div>
+				</Field>
+
+				{draft.content.cta.mode === "link" && (
+					<>
+						<Field label={t.ctaHref}>
+							<TextInput
+								value={draft.content.cta.href}
+								placeholder={t.ctaHrefPlaceholder}
+								maxLength={500}
+								onChange={(href) => setCta(props, { href })}
+							/>
+						</Field>
+						<p className="text-[12.5px] leading-relaxed text-dim">{t.ctaHrefHint}</p>
+					</>
+				)}
+
+				<Field label={t.cta}>
+					<TextInput
+						value={c.ctaLabel}
+						onChange={(ctaLabel) => setContent(props, { ctaLabel })}
+						maxLength={40}
+					/>
+				</Field>
+			</div>
+
 			<Field label={t.name}>
 				<TextInput
 					value={draft.name}
@@ -228,14 +287,6 @@ export function ContentPanel(props: PanelProps) {
 					value={c.subheadline}
 					onChange={(subheadline) => setContent(props, { subheadline })}
 					maxLength={160}
-				/>
-			</Field>
-
-			<Field label={t.cta}>
-				<TextInput
-					value={c.ctaLabel}
-					onChange={(ctaLabel) => setContent(props, { ctaLabel })}
-					maxLength={40}
 				/>
 			</Field>
 
@@ -358,6 +409,116 @@ export function ContentPanel(props: PanelProps) {
 				</section>
 			)}
 
+			{has("pricing") && (
+				<section>
+					<p className="text-[12px] uppercase tracking-[0.1em] text-dim">{t.pricing}</p>
+					<div className="mt-2 space-y-2.5">
+						{c.pricing.map((plan, i) => {
+							const edit = (partial: Partial<Plan>) =>
+								setContent(props, {
+									pricing: c.pricing.map((p, j) => (j === i ? { ...p, ...partial } : p)),
+								});
+
+							return (
+								<Card
+									key={i}
+									title={plan.name || `${i + 1}`}
+									removeLabel={t.remove}
+									onRemove={() =>
+										setContent(props, { pricing: c.pricing.filter((_, j) => j !== i) })
+									}
+								>
+									<TextInput
+										value={plan.name}
+										placeholder={t.planName}
+										maxLength={40}
+										onChange={(name) => edit({ name })}
+									/>
+									<div className="flex gap-2">
+										<TextInput
+											value={plan.price}
+											placeholder={t.planPrice}
+											maxLength={24}
+											onChange={(price) => edit({ price })}
+										/>
+										<TextInput
+											value={plan.period}
+											placeholder={t.planPeriod}
+											maxLength={24}
+											onChange={(period) => edit({ period })}
+										/>
+									</div>
+
+									{plan.points.map((point, j) => (
+										<TextInput
+											key={j}
+											value={point}
+											placeholder={t.planPoint}
+											onChange={(value) =>
+												edit({ points: plan.points.map((p, k) => (k === j ? value : p)) })
+											}
+										/>
+									))}
+									<AddButton
+										label={t.add}
+										disabled={plan.points.length >= MAX_PLAN_POINTS}
+										onClick={() => edit({ points: [...plan.points, ""] })}
+									/>
+
+									{/* A button's destination and which plan is the loud one are the
+									    page's, not a translation's — same rule as the hero CTA. */}
+									{editing === draft.lang && (
+										<>
+											<TextInput
+												value={plan.ctaHref}
+												placeholder={t.planCtaHref}
+												maxLength={500}
+												onChange={(ctaHref) => edit({ ctaHref })}
+											/>
+											<label className="flex items-center gap-2 text-[13px] text-muted">
+												<input
+													type="checkbox"
+													checked={plan.highlight}
+													onChange={(e) => edit({ highlight: e.target.checked })}
+													className="h-4 w-4 accent-[var(--color-brand)]"
+												/>
+												{t.planHighlight}
+											</label>
+										</>
+									)}
+									<TextInput
+										value={plan.ctaLabel}
+										placeholder={t.planCtaLabel}
+										maxLength={40}
+										onChange={(ctaLabel) => edit({ ctaLabel })}
+									/>
+								</Card>
+							);
+						})}
+						<AddButton
+							label={t.add}
+							disabled={c.pricing.length >= MAX_PLANS}
+							onClick={() =>
+								setContent(props, {
+									pricing: [
+										...c.pricing,
+										{
+											name: "",
+											price: "",
+											period: "",
+											points: [],
+											ctaLabel: "",
+											ctaHref: "",
+											highlight: false,
+										},
+									],
+								})
+							}
+						/>
+					</div>
+				</section>
+			)}
+
 			{has("faq") && (
 				<section>
 					<p className="text-[12px] uppercase tracking-[0.1em] text-dim">{t.faq}</p>
@@ -457,6 +618,7 @@ export function SectionsPanel({ draft, patch, dict }: PanelProps) {
 		features: labels.features,
 		waitlist: dict.project.waitlist,
 		howItWorks: labels.howItWorks,
+		pricing: labels.pricing,
 		faq: labels.faq,
 		founder: labels.founder,
 		social: labels.social,
@@ -465,21 +627,21 @@ export function SectionsPanel({ draft, patch, dict }: PanelProps) {
 	return (
 		<div className="space-y-2">
 			{SECTIONS.map((section) => {
-				const locked = LOCKED_SECTIONS.includes(section);
+				const isLocked = LOCKED_SECTIONS.includes(section);
 				const on = draft.sections.includes(section);
 
 				return (
 					<label
 						key={section}
 						className={`flex items-center justify-between gap-3 rounded-lg border border-line-soft bg-ink-2 px-3.5 py-2.5 text-[13.5px] ${
-							locked ? "opacity-60" : "cursor-pointer"
+							isLocked ? "opacity-60" : "cursor-pointer"
 						}`}
 					>
 						<span>{names[section]}</span>
 						<input
 							type="checkbox"
 							checked={on}
-							disabled={locked}
+							disabled={isLocked}
 							onChange={(e) =>
 								patch({
 									sections: e.target.checked

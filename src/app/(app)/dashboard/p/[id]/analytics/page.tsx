@@ -9,6 +9,7 @@ import {
 } from "@/components/dash/stats";
 import { getAppDict } from "@/i18n/app";
 import { getTraffic } from "@/lib/analytics";
+import { isLinkCta } from "@/lib/content";
 import { requireUser } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { appLang } from "@/lib/lang";
@@ -40,17 +41,35 @@ export default async function AnalyticsPage({
 	const t = getAppDict(lang).analytics;
 
 	const signups30 = stats.series.reduce((n, d) => n + d.count, 0);
-	const conversion = traffic.visitors
-		? `${((signups30 / traffic.visitors) * 100).toFixed(1)}%`
-		: "—";
+	const rate = (n: number) =>
+		traffic.visitors ? `${((n / traffic.visitors) * 100).toFixed(1)}%` : "—";
+
+	// With a link CTA the conversion worth reporting is the click, and the source
+	// table counts clicks in the column signups would have had.
+	const linkCta = isLinkCta(project.content.cta);
+	const sourceRows = linkCta
+		? traffic.sources.map((source) => ({
+				label: source.label,
+				visitors: source.visitors,
+				signups: source.clicks,
+			}))
+		: mergeSources(traffic, stats.sources);
 
 	return (
 		<main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				<Stat label={t.visitors} value={traffic.visitors} hint={t.last30} />
 				<Stat label={t.views} value={traffic.views} hint={t.last30} />
-				<Stat label={t.signups} value={signups30} hint={t.last30} />
-				<Stat label={t.conversion} value={conversion} hint={t.last30} />
+				{linkCta ? (
+					<Stat label={t.clicks} value={traffic.clicks} hint={t.last30} />
+				) : (
+					<Stat label={t.signups} value={signups30} hint={t.last30} />
+				)}
+				<Stat
+					label={linkCta ? t.clickRate : t.conversion}
+					value={rate(linkCta ? traffic.clicks : signups30)}
+					hint={t.last30}
+				/>
 			</div>
 
 			{!traffic.tracking && (
@@ -68,22 +87,26 @@ export default async function AnalyticsPage({
 						empty={t.noData}
 					/>
 				)}
-				<Sparkbars
-					title={`${t.signups} · ${t.last30}`}
-					points={stats.series}
-					empty={t.noData}
-				/>
+				{/* A link-CTA page that never collected an email has nothing to plot
+				    here; one that runs both still does. */}
+				{(!linkCta || stats.total > 0) && (
+					<Sparkbars
+						title={`${t.signups} · ${t.last30}`}
+						points={stats.series}
+						empty={t.noData}
+					/>
+				)}
 			</div>
 
 			<div className="mt-4">
 				<SourceTable
-					rows={mergeSources(traffic, stats.sources)}
+					rows={sourceRows}
 					tracking={traffic.available && traffic.tracking}
 					labels={{
 						title: t.sources,
 						source: t.source,
 						visitors: t.visitors,
-						signups: t.signups,
+						signups: linkCta ? t.clicks : t.signups,
 						conv: t.conv,
 					}}
 					empty={t.noData}

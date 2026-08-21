@@ -45,13 +45,40 @@ export async function recordHit(
 		.run();
 }
 
+/**
+ * Records one click on a link CTA. Deliberately not a flag on `recordHit`: that
+ * function's whole shape is the visitor dedupe through `visitor_days`, and a
+ * second click from the same person is a real second click.
+ */
+export async function recordClick(
+	db: D1Database,
+	input: Omit<HitInput, "ipHash">,
+): Promise<void> {
+	await db
+		.prepare(
+			`INSERT INTO page_stats (project_id, day, source, views, visitors, clicks)
+			 VALUES (?, ?, ?, 0, 0, 1)
+			 ON CONFLICT (project_id, day, source) DO UPDATE SET
+				clicks = clicks + 1`,
+		)
+		.bind(input.projectId, input.day, input.source)
+		.run();
+}
+
 export type TrafficDay = { day: string; views: number; visitors: number };
-export type SourceTraffic = { label: string; views: number; visitors: number };
+export type SourceTraffic = {
+	label: string;
+	views: number;
+	visitors: number;
+	clicks: number;
+};
 
 export type Traffic = {
 	/** Totals over the window, not all time. */
 	views: number;
 	visitors: number;
+	/** Clicks on a link CTA. Always 0 on a page that collects emails instead. */
+	clicks: number;
 	/** Oldest to newest, gap-filled, `days` long. */
 	series: TrafficDay[];
 	sources: SourceTraffic[];
@@ -66,7 +93,13 @@ export type Traffic = {
 	available: boolean;
 };
 
-type TrafficRow = { day?: string; label?: string; views: number; visitors: number };
+type TrafficRow = {
+	day?: string;
+	label?: string;
+	views: number;
+	visitors: number;
+	clicks: number;
+};
 
 export async function getTraffic(
 	db: D1Database,
@@ -82,6 +115,7 @@ export async function getTraffic(
 		return {
 			views: 0,
 			visitors: 0,
+			clicks: 0,
 			series: window.map((day) => ({ day, views: 0, visitors: 0 })),
 			sources: [],
 			tracking: false,
@@ -108,7 +142,8 @@ async function queryTraffic(
 				.bind(projectId, from),
 			db
 				.prepare(
-					`SELECT source AS label, SUM(views) AS views, SUM(visitors) AS visitors
+					`SELECT source AS label, SUM(views) AS views, SUM(visitors) AS visitors,
+					        SUM(clicks) AS clicks
 					 FROM page_stats WHERE project_id = ? AND day >= ?
 					 GROUP BY source ORDER BY visitors DESC, views DESC`,
 				)
@@ -134,11 +169,13 @@ async function queryTraffic(
 		label: String(row.label),
 		views: Number(row.views),
 		visitors: Number(row.visitors),
+		clicks: Number(row.clicks ?? 0),
 	}));
 
 	return {
 		views: series.reduce((n, d) => n + d.views, 0),
 		visitors: series.reduce((n, d) => n + d.visitors, 0),
+		clicks: sources.reduce((n, s) => n + s.clicks, 0),
 		series,
 		sources,
 		tracking: Number((everRow.results?.[0] as { n?: number })?.n ?? 0) > 0,
@@ -157,7 +194,7 @@ export async function pruneVisitorDays(
 		.run();
 }
 
-export type Totals = { views: number; visitors: number };
+export type Totals = { views: number; visitors: number; clicks: number };
 
 /**
  * Traffic totals for several projects at once — the dashboard list would
@@ -177,17 +214,24 @@ export async function getTotals(
 	try {
 		const { results } = await db
 			.prepare(
-				`SELECT project_id, SUM(views) AS views, SUM(visitors) AS visitors
+				`SELECT project_id, SUM(views) AS views, SUM(visitors) AS visitors,
+				        SUM(clicks) AS clicks
 				 FROM page_stats WHERE project_id IN (${placeholders}) AND day >= ?
 				 GROUP BY project_id`,
 			)
 			.bind(...projectIds, from)
-			.all<{ project_id: string; views: number; visitors: number }>();
+			.all<{
+				project_id: string;
+				views: number;
+				visitors: number;
+				clicks: number;
+			}>();
 
 		for (const row of results ?? []) {
 			totals.set(row.project_id, {
 				views: Number(row.views),
 				visitors: Number(row.visitors),
+				clicks: Number(row.clicks ?? 0),
 			});
 		}
 	} catch (error) {

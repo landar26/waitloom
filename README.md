@@ -101,6 +101,26 @@ against `/s/<slug>` directly, or pass a `Host` header.
 Only the bare URL is negotiated, and it answers `no-store`. Anything that starts
 caching these responses has to add `Vary: Accept-Language` at that layer.
 
+## Before and after launch
+
+A page's call to action is `content.cta`: `waitlist` collects emails, `link`
+sends people at the product itself. That one field is what lets a page outlive
+its own launch — flip it, and the hero's form becomes a button pointing at an
+App Store page or a sign-up, the `waitlist` section stops being locked, and the
+optional `pricing` section has something to sit next to.
+
+`mode: "link"` with an empty `href` counts as a waitlist rather than rendering a
+button that goes nowhere — ask `isLinkCta()`, never `cta.mode` on its own.
+
+`LOCKED_SECTIONS` is `["hero"]` and nothing else, in either mode: the hero
+always carries the first ask, so the closing waitlist block is a second ask a
+founder may drop whenever they like. With it gone, the header's button points at
+the hero's own `#cta` instead.
+
+The CTA is read from the primary document in every language, like `social`: the
+label is translatable, where the button goes is not. Same for a pricing plan's
+`ctaHref` and `highlight`.
+
 ## Templates
 
 A template is a pair of neutral palettes (light and dark) plus a shape — radii,
@@ -129,6 +149,13 @@ Workers reports as local.
 `page_stats.project_id` is the marketing site's own `"waitloom"` for `/api/hit`,
 and a real project UUID for `/api/p/[slug]/hit` — the id rather than the slug, so
 renaming a page does not orphan its history.
+
+`page_stats.clicks` is the same idea for a page with a link CTA: `<CtaLink>`
+beacons `POST /api/p/[slug]/click` on its way out, at the same project/day/source
+grain as the views, so the dashboard can put a click rate where a page with a
+waitlist shows its signup conversion. Clicks are not deduplicated — a second
+click from the same person is a second click — and the endpoint drops anything
+for a project whose CTA is not a link.
 
 Traffic is not backfillable — numbers start from the first visit after deploy.
 

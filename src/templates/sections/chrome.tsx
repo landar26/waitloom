@@ -174,6 +174,8 @@ export function PageHeader({
 	name,
 	logoUrl,
 	ctaLabel,
+	ctaHref,
+	ctaExternal,
 	rules,
 	locales,
 	activeLocale,
@@ -183,6 +185,9 @@ export function PageHeader({
 	name: string;
 	logoUrl: string;
 	ctaLabel: string;
+	/** The product's own link, `#waitlist`, or empty for no button at all. */
+	ctaHref: string;
+	ctaExternal: boolean;
 	rules: boolean;
 	/** Fewer than two languages means there is nothing to switch between. */
 	locales: PageLocale[];
@@ -205,12 +210,17 @@ export function PageHeader({
 							inert={preview}
 						/>
 					)}
-					<a
-						href="#waitlist"
-						className="rounded-[var(--wl-control)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] px-3.5 py-1.5 text-[13px] text-[var(--wl-fg)] transition-colors hover:border-[var(--wl-accent)] hover:text-[var(--wl-accent)]"
-					>
-						{ctaLabel}
-					</a>
+					{ctaHref && (
+						<a
+							href={ctaHref}
+							{...(ctaExternal
+								? { target: "_blank", rel: "noopener noreferrer" }
+								: {})}
+							className="rounded-[var(--wl-control)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] px-3.5 py-1.5 text-[13px] text-[var(--wl-fg)] transition-colors hover:border-[var(--wl-accent)] hover:text-[var(--wl-accent)]"
+						>
+							{ctaLabel}
+						</a>
+					)}
 				</div>
 			</Container>
 		</header>

@@ -13,6 +13,7 @@ export const SECTIONS = [
 	"features",
 	"waitlist",
 	"howItWorks",
+	"pricing",
 	"faq",
 	"founder",
 	"social",
@@ -20,8 +21,13 @@ export const SECTIONS = [
 
 export type SectionId = (typeof SECTIONS)[number];
 
-/** A pre-launch page without these two is not a pre-launch page. */
-export const LOCKED_SECTIONS: SectionId[] = ["hero", "waitlist"];
+/**
+ * The one section a page cannot switch off. The waitlist block is the page's
+ * *second* ask — the hero always carries the first, whether that is the form or
+ * the button that replaces it — so switching it off never leaves a page unable
+ * to do its job, whichever mode its CTA is in.
+ */
+export const LOCKED_SECTIONS: SectionId[] = ["hero"];
 
 export const DEFAULT_SECTIONS: SectionId[] = [
 	"hero",
@@ -33,6 +39,8 @@ export const DEFAULT_SECTIONS: SectionId[] = [
 export const MAX_FEATURES = 6;
 export const MAX_STEPS = 4;
 export const MAX_FAQ = 6;
+export const MAX_PLANS = 3;
+export const MAX_PLAN_POINTS = 5;
 
 const MAX_HEADLINE = 90;
 const MAX_LINE = 160;
@@ -40,17 +48,45 @@ const MAX_BODY = 400;
 const MAX_URL = 500;
 
 export type Feature = { title: string; body: string };
+export type Plan = {
+	name: string;
+	price: string;
+	/** "per month", "one-time" — whatever sits under the number. */
+	period: string;
+	points: string[];
+	ctaLabel: string;
+	ctaHref: string;
+	highlight: boolean;
+};
 export type Step = { title: string; body: string };
 export type FaqItem = { q: string; a: string };
+
+/**
+ * What the page's main button does. `waitlist` collects emails, `link` sends
+ * people at the product itself — the one difference between a page written
+ * before launch and the same page kept afterwards.
+ */
+export type Cta = { mode: "waitlist" | "link"; href: string };
+
+/**
+ * A link CTA with nowhere to go is not a link CTA: the button would render and
+ * do nothing, which is worse than the form it replaced. Everything that decides
+ * between the two modes asks this, never `cta.mode` on its own.
+ */
+export function isLinkCta(cta: Cta): boolean {
+	return cta.mode === "link" && cta.href !== "";
+}
 
 export type ProjectContent = {
 	logoUrl: string;
 	headline: string;
 	subheadline: string;
 	ctaLabel: string;
+	cta: Cta;
 	screenshotUrl: string;
 	features: Feature[];
 	howItWorks: Step[];
+	pricing: Plan[];
 	faq: FaqItem[];
 	founder: { name: string; avatarUrl: string; bio: string };
 	social: { x: string; github: string; website: string; discord: string };
@@ -71,6 +107,14 @@ export function safeUrl(raw: unknown): string {
 	} catch {
 		return "";
 	}
+}
+
+function sanitizeCta(raw: unknown): Cta {
+	const input = (raw ?? {}) as Record<string, unknown>;
+	return {
+		mode: input.mode === "link" ? "link" : "waitlist",
+		href: safeUrl(input.href),
+	};
 }
 
 function text(raw: unknown, max: number): string {
@@ -98,6 +142,7 @@ export function sanitizeContent(raw: unknown): ProjectContent {
 		headline: text(input.headline, MAX_HEADLINE),
 		subheadline: text(input.subheadline, MAX_LINE),
 		ctaLabel: text(input.ctaLabel, 40),
+		cta: sanitizeCta(input.cta),
 		screenshotUrl: safeUrl(input.screenshotUrl),
 		features: list<Feature>(input.features, MAX_FEATURES, (item) => {
 			const f = (item ?? {}) as Record<string, unknown>;
@@ -110,6 +155,24 @@ export function sanitizeContent(raw: unknown): ProjectContent {
 			const title = text(s.title, 60);
 			const body = text(s.body, MAX_BODY);
 			return title || body ? { title, body } : null;
+		}),
+		pricing: list<Plan>(input.pricing, MAX_PLANS, (item) => {
+			const p = (item ?? {}) as Record<string, unknown>;
+			const name = text(p.name, 40);
+			const price = text(p.price, 24);
+			const points = list<string>(p.points, MAX_PLAN_POINTS, (point) =>
+				text(point, MAX_LINE) || null,
+			);
+			if (!name && !price && points.length === 0) return null;
+			return {
+				name,
+				price,
+				period: text(p.period, 24),
+				points,
+				ctaLabel: text(p.ctaLabel, 40),
+				ctaHref: safeUrl(p.ctaHref),
+				highlight: p.highlight === true,
+			};
 		}),
 		faq: list<FaqItem>(input.faq, MAX_FAQ, (item) => {
 			const f = (item ?? {}) as Record<string, unknown>;
@@ -212,6 +275,32 @@ const STARTER_FEATURES: Record<ProductType, Feature[]> = {
 	],
 };
 
+/**
+ * Two plans is where most indie products land, and a third is one click away.
+ * Starter copy for the same reason the features have it: switching the section
+ * on should show a finished block, not an empty form.
+ */
+const STARTER_PRICING: Plan[] = [
+	{
+		name: "Free",
+		price: "$0",
+		period: "forever",
+		points: ["The core, with no time limit", "One project", "Community support"],
+		ctaLabel: "",
+		ctaHref: "",
+		highlight: false,
+	},
+	{
+		name: "Pro",
+		price: "$9",
+		period: "per month",
+		points: ["Everything in Free", "Unlimited projects", "Email support"],
+		ctaLabel: "",
+		ctaHref: "",
+		highlight: true,
+	},
+];
+
 export function defaultContent(
 	name: string,
 	description: string,
@@ -227,6 +316,7 @@ export function defaultContent(
 		ctaLabel: "Join the waitlist",
 		features: STARTER_FEATURES[type],
 		howItWorks: [],
+		pricing: STARTER_PRICING,
 		faq: [],
 		founder: {},
 		social: {},
@@ -293,6 +383,9 @@ export function mergeContent(
 		headline: pick(translation.headline, primary.headline),
 		subheadline: pick(translation.subheadline, primary.subheadline),
 		ctaLabel: pick(translation.ctaLabel, primary.ctaLabel),
+		// One page, one call to action: a translation cannot send its readers
+		// somewhere else, or turn a download button back into an email form.
+		cta: primary.cta,
 		screenshotUrl: pick(translation.screenshotUrl, primary.screenshotUrl),
 		features: mergeList(translation.features, primary.features, (t, b) => ({
 			title: pick(t.title, b?.title ?? ""),
@@ -301,6 +394,16 @@ export function mergeContent(
 		howItWorks: mergeList(translation.howItWorks, primary.howItWorks, (t, b) => ({
 			title: pick(t.title, b?.title ?? ""),
 			body: pick(t.body, b?.body ?? ""),
+		})),
+		pricing: mergeList(translation.pricing, primary.pricing, (t, b) => ({
+			name: pick(t.name, b?.name ?? ""),
+			price: pick(t.price, b?.price ?? ""),
+			period: pick(t.period, b?.period ?? ""),
+			points: t.points.length > 0 ? t.points : (b?.points ?? []),
+			ctaLabel: pick(t.ctaLabel, b?.ctaLabel ?? ""),
+			// Where a plan's button goes is the same in every language.
+			ctaHref: b?.ctaHref ?? t.ctaHref,
+			highlight: b?.highlight ?? t.highlight,
 		})),
 		faq: mergeList(translation.faq, primary.faq, (t, b) => ({
 			q: pick(t.q, b?.q ?? ""),
