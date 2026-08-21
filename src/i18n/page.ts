@@ -1,9 +1,10 @@
 import type { Lang } from "./dictionaries";
 
 /**
- * Microcopy for a published page. Keyed by the *project's* language, not the
- * visitor's: a founder writing English copy should not get a Chinese form
- * underneath it.
+ * Microcopy for a published page, keyed by the language the page is currently
+ * being read in — which is the founder's own language until they translate the
+ * page, and the visitor's negotiated one after that. Either way the form and
+ * the copy above it always speak the same language.
  */
 export const pageEn = {
 	sections: {
@@ -32,6 +33,9 @@ export const pageEn = {
 		successBody: "We'll let you know the moment it's live.",
 		alreadyIn: "You're already on the list.",
 		previewNote: "Preview — signups are disabled here.",
+	},
+	switcher: {
+		label: "Language",
 	},
 	footer: {
 		madeWith: "Made with Waitloom",
@@ -72,6 +76,9 @@ export const pageZh: PageDict = {
 		successBody: "上线的那一刻就会通知你。",
 		alreadyIn: "你已经在名单上了。",
 		previewNote: "预览模式 —— 这里无法真正提交。",
+	},
+	switcher: {
+		label: "语言",
 	},
 	footer: {
 		madeWith: "由 Waitloom 制作",

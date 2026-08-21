@@ -81,3 +81,20 @@ export function projectUrl(slug: string, requestHost?: string | null): string {
 	}
 	return `https://${slug}.${ROOT_HOST}`;
 }
+
+/**
+ * Where a published page is read in one language. The primary language keeps
+ * the bare URL; the others get a `/zh`-style path, which middleware unwraps.
+ * The local path form has no route for that segment, so it carries the
+ * language as a search param instead.
+ */
+export function projectLocaleUrl(
+	slug: string,
+	lang: string,
+	primaryLang: string,
+	requestHost?: string | null,
+): string {
+	const base = projectUrl(slug, requestHost);
+	if (lang === primaryLang) return base;
+	return requestHost && isLocal(requestHost) ? `${base}?lang=${lang}` : `${base}/${lang}`;
+}

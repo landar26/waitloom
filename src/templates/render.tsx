@@ -7,14 +7,23 @@ import {
 } from "@/components/public/project-waitlist-form";
 import { getTemplate } from "./registry";
 import { Faq, Features, Founder, HowItWorks, Screenshot, Social } from "./sections/blocks";
-import { Heading, PageFooter, PageHeader, Section } from "./sections/chrome";
+import {
+	Heading,
+	PageFooter,
+	PageHeader,
+	Section,
+	type PageLocale,
+} from "./sections/chrome";
 import { Hero, HeroDecoration } from "./sections/hero";
 import { type FontName, isFont, isTheme, resolveStyle } from "./style";
 
 export type RenderProject = {
 	name: string;
 	slug: string;
+	/** The language being read right now, not necessarily the founder's own. */
 	lang: string;
+	/** Every language this page offers. Fewer than two hides the switcher. */
+	locales?: PageLocale[];
 	templateId: string;
 	theme: string;
 	accent: string;
@@ -83,6 +92,10 @@ export function TemplatePage({
 				logoUrl={content.logoUrl}
 				ctaLabel={ctaLabel}
 				rules={spec.shape.rules}
+				locales={project.locales ?? []}
+				activeLocale={project.lang}
+				switcherLabel={dict.switcher.label}
+				preview={preview}
 			/>
 
 			<main>

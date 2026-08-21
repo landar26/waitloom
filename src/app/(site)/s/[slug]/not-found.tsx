@@ -1,11 +1,21 @@
-import { pageEn } from "@/i18n/page";
+import { headers } from "next/headers";
+import { LANGS } from "@/i18n/dictionaries";
+import { getPageDict } from "@/i18n/page";
+import { negotiateLang } from "@/lib/lang";
 
-/** An unclaimed subdomain should still look like it belongs to something. */
-export default function NotFound() {
-	const t = pageEn.notFound;
+/**
+ * An unclaimed subdomain should still look like it belongs to something. There
+ * is no project to take a language from, so this one follows the visitor.
+ */
+export default async function NotFound() {
+	const lang = negotiateLang((await headers()).get("accept-language"), LANGS, "en");
+	const t = getPageDict(lang).notFound;
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-[#09090b] px-6 text-center text-[#f2f2f4]">
+		<main
+			lang={lang}
+			className="flex min-h-screen items-center justify-center bg-[#09090b] px-6 text-center text-[#f2f2f4]"
+		>
 			<div>
 				<p className="text-[13px] uppercase tracking-[0.16em] text-[#6e6e78]">
 					Waitloom

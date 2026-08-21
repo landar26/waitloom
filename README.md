@@ -79,6 +79,28 @@ for `UNIQUE(project_id, email)` — and D1 enforces foreign keys, so dropping th
 old table fires `answers`' `ON DELETE CASCADE` and takes every live answer with
 it. The query logic is shared at the module level instead.
 
+## A page in two languages
+
+`projects.lang` is a page's **primary** language — the one `projects.content` is
+written in. Every other language lives in `projects.translations`, keyed by
+code, and the languages a page offers are `[lang, ...keys]`. Questions work the
+same way through `questions.translations`. A field left blank in a translation
+falls back to the primary one, so a half-finished translation still renders a
+whole page.
+
+| URL | What a visitor gets |
+| --- | --- |
+| `<slug>.waitloom.app/` | negotiated from their `Accept-Language` |
+| `<slug>.waitloom.app/zh` | Chinese, whatever their browser prefers |
+
+The `/zh` form never reaches the router: middleware strips it and hands
+`/s/<slug>` a `?lang=` search param, so a published page stays one route. Local
+development has no wildcard DNS and therefore no `/zh` path — use `?lang=zh`
+against `/s/<slug>` directly, or pass a `Host` header.
+
+Only the bare URL is negotiated, and it answers `no-store`. Anything that starts
+caching these responses has to add `Vary: Accept-Language` at that layer.
+
 ## Templates
 
 A template is a pair of neutral palettes (light and dark) plus a shape — radii,

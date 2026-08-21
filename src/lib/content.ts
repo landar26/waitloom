@@ -1,4 +1,4 @@
-import { PRODUCT_TYPES, type ProductType } from "@/i18n/dictionaries";
+import { LANGS, PRODUCT_TYPES, type Lang, type ProductType } from "@/i18n/dictionaries";
 import { clampText } from "./validation";
 
 /**
@@ -231,4 +231,106 @@ export function defaultContent(
 		founder: {},
 		social: {},
 	});
+}
+
+/**
+ * A page's non-primary languages. The primary language's copy stays in
+ * `content`, so this map never holds a key equal to `projects.lang` — the
+ * languages a page offers are `[lang, ...Object.keys(translations)]`.
+ */
+export type Translations = Partial<Record<Lang, ProjectContent>>;
+
+export function isLangCode(value: unknown): value is Lang {
+	return typeof value === "string" && (LANGS as readonly string[]).includes(value);
+}
+
+/** Coerces whatever the client sent into a translation map we can render. */
+export function sanitizeTranslations(raw: unknown, primary: string): Translations {
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+	const out: Translations = {};
+	for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
+		// The primary language lives in `content`; a second copy here could only
+		// ever disagree with it.
+		if (!isLangCode(code) || code === primary) continue;
+		out[code] = sanitizeContent(value);
+	}
+	return out;
+}
+
+export function parseTranslations(raw: string | null, primary: string): Translations {
+	if (!raw) return {};
+	try {
+		return sanitizeTranslations(JSON.parse(raw), primary);
+	} catch {
+		return {};
+	}
+}
+
+function pick(translated: string, primary: string): string {
+	return translated || primary;
+}
+
+/** An untranslated list falls back whole; a translated one falls back per field. */
+function mergeList<T>(translated: T[], base: T[], merge: (t: T, b: T | undefined) => T): T[] {
+	if (translated.length === 0) return base;
+	return translated.map((item, i) => merge(item, base[i]));
+}
+
+/**
+ * The translated document with every blank field filled from the primary one.
+ * A founder who has translated the headline and nothing else should get a
+ * bilingual page, not a page with empty sections.
+ */
+export function mergeContent(
+	primary: ProjectContent,
+	translation: ProjectContent | undefined,
+): ProjectContent {
+	if (!translation) return primary;
+
+	return {
+		logoUrl: pick(translation.logoUrl, primary.logoUrl),
+		headline: pick(translation.headline, primary.headline),
+		subheadline: pick(translation.subheadline, primary.subheadline),
+		ctaLabel: pick(translation.ctaLabel, primary.ctaLabel),
+		screenshotUrl: pick(translation.screenshotUrl, primary.screenshotUrl),
+		features: mergeList(translation.features, primary.features, (t, b) => ({
+			title: pick(t.title, b?.title ?? ""),
+			body: pick(t.body, b?.body ?? ""),
+		})),
+		howItWorks: mergeList(translation.howItWorks, primary.howItWorks, (t, b) => ({
+			title: pick(t.title, b?.title ?? ""),
+			body: pick(t.body, b?.body ?? ""),
+		})),
+		faq: mergeList(translation.faq, primary.faq, (t, b) => ({
+			q: pick(t.q, b?.q ?? ""),
+			a: pick(t.a, b?.a ?? ""),
+		})),
+		founder: {
+			name: pick(translation.founder.name, primary.founder.name),
+			avatarUrl: pick(translation.founder.avatarUrl, primary.founder.avatarUrl),
+			bio: pick(translation.founder.bio, primary.founder.bio),
+		},
+		// Links are the same wherever you read the page from.
+		social: primary.social,
+	};
+}
+
+/** What a page looks like in one language — used by the page and the editor. */
+export type Localized = {
+	lang: string;
+	content: ProjectContent;
+	translations: Translations;
+};
+
+/** Every language this page can be read in, the primary one first. */
+export function localesOf(page: Localized): Lang[] {
+	const primary = isLangCode(page.lang) ? page.lang : "en";
+	const extra = LANGS.filter((code) => code !== primary && page.translations[code]);
+	return [primary, ...extra];
+}
+
+export function contentFor(page: Localized, lang: string): ProjectContent {
+	if (lang === page.lang || !isLangCode(lang)) return page.content;
+	return mergeContent(page.content, page.translations[lang]);
 }

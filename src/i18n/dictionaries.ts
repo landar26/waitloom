@@ -1,6 +1,12 @@
 export const LANGS = ["en", "zh"] as const;
 export type Lang = (typeof LANGS)[number];
 
+/** Each language named in itself — a switcher is read by people who want out. */
+export const LANG_LABELS: Record<Lang, string> = { en: "English", zh: "中文" };
+
+/** The short form, for tight spots like a published page's header. */
+export const LANG_SHORT: Record<Lang, string> = { en: "EN", zh: "中文" };
+
 export const PRODUCT_TYPES = [
 	"saas",
 	"ai",

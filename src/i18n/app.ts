@@ -94,6 +94,18 @@ export const appEn = {
 			sections: "Sections",
 			questions: "Questions",
 		},
+		locales: {
+			primary: "primary",
+			add: "Add {lang}",
+			remove: "Remove translation",
+			removeConfirm: "Delete this translation? Everything written in it is lost.",
+			hint:
+				"Visitors whose browser is set to this language see this version. " +
+				"Anything you leave blank falls back to {lang}.",
+			questionsHint:
+				"Translate the wording only — the type and the number of options are " +
+				"shared with {lang}.",
+		},
 		fields: {
 			logo: "Logo",
 			name: "Product name",
@@ -129,7 +141,7 @@ export const appEn = {
 			accent: "Accent",
 			custom: "Custom",
 			font: "Font",
-			language: "Page language",
+			language: "Primary language",
 		},
 		questions: {
 			intro: "Ask up to three questions after someone joins. They are optional for visitors, so they do not cost you signups.",
@@ -185,8 +197,10 @@ export const appEn = {
 		slugHint: "Letters, numbers and dashes. This is the link you share.",
 		slugTaken: "That address is taken.",
 		slugInvalid: "That address cannot be used.",
-		language: "Page language",
-		languageHint: "The language of the form and section headings on your page.",
+		language: "Primary language",
+		languageHint:
+			"The language you write the page in. Add translations in the editor's " +
+			"Content panel — visitors then get whichever one their browser asks for.",
 		save: "Save",
 		saving: "Saving…",
 		saved: "Saved",
@@ -331,6 +345,14 @@ export const appZh: AppDict = {
 			sections: "板块",
 			questions: "问题",
 		},
+		locales: {
+			primary: "主语言",
+			add: "添加{lang}",
+			remove: "删除译文",
+			removeConfirm: "删除这份译文？里面写过的内容会丢失。",
+			hint: "浏览器语言匹配的访客会看到这一版。留空的字段会回退到{lang}。",
+			questionsHint: "只翻译文字 —— 问题类型和选项个数与{lang}共用。",
+		},
 		fields: {
 			logo: "Logo",
 			name: "产品名称",
@@ -366,7 +388,7 @@ export const appZh: AppDict = {
 			accent: "强调色",
 			custom: "自定义",
 			font: "字体",
-			language: "页面语言",
+			language: "主语言",
 		},
 		questions: {
 			intro: "在用户加入后最多问三个问题。对访客来说是选填的，所以不会影响注册转化。",
@@ -421,8 +443,9 @@ export const appZh: AppDict = {
 		slugHint: "字母、数字和连字符。这就是你要分享的链接。",
 		slugTaken: "这个地址已被占用。",
 		slugInvalid: "这个地址不能使用。",
-		language: "页面语言",
-		languageHint: "页面上表单和板块标题使用的语言。",
+		language: "主语言",
+		languageHint:
+			"你撰写页面所用的语言。在编辑器的「内容」面板里添加译文，访客就会看到自己浏览器语言对应的那一版。",
 		save: "保存",
 		saving: "保存中…",
 		saved: "已保存",

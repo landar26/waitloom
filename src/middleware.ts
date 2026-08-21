@@ -1,7 +1,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { LANGS } from "@/i18n/dictionaries";
 import { SESSION_COOKIE } from "@/lib/cookies";
 import { ROOT_HOST, hostname, projectPath, slugFromHost } from "@/lib/host";
+
+/**
+ * `<slug>.waitloom.app/zh` is the Chinese reading of a page, not a sub-page —
+ * the same convention the marketing site uses for /zh.
+ */
+function localeSegment(pathname: string): string | null {
+	const code = pathname.replace(/\/+$/, "").slice(1);
+	return (LANGS as readonly string[]).includes(code) ? code : null;
+}
 
 /**
  * Server components cannot see the request path. The app header needs it so the
@@ -57,7 +67,22 @@ export async function middleware(request: NextRequest) {
 		}
 
 		const url = request.nextUrl.clone();
-		url.pathname = `${projectPath(slug)}${pathname === "/" ? "" : pathname}`;
+		const locale = localeSegment(pathname);
+
+		if (locale) {
+			// The pretty URL stays public and the page gets a plain search param,
+			// so /s/<slug> remains the single route a published page renders by.
+			url.pathname = projectPath(slug);
+			url.searchParams.set("lang", locale);
+		} else {
+			url.pathname = `${projectPath(slug)}${pathname === "/" ? "" : pathname}`;
+		}
+
+		// The bare URL is negotiated from the visitor's own Accept-Language, which
+		// would normally need a Vary. Next owns that header on a rewrite and
+		// overwrites whatever middleware sets — safe only because the page is
+		// force-dynamic and answers `no-store`. Anything that starts caching these
+		// responses has to add `Vary: Accept-Language` at that layer.
 		return NextResponse.rewrite(url);
 	}
 

@@ -122,16 +122,73 @@ export function Logo({ url, name }: { url: string; name: string }) {
 	);
 }
 
+/** One language a page can be read in, as the header needs to render it. */
+export type PageLocale = { code: string; label: string; href: string };
+
+/**
+ * Plain links, not a dropdown: with two languages a menu costs a click and
+ * teaches the visitor nothing the labels do not already say.
+ */
+function LanguageSwitcher({
+	locales,
+	active,
+	label,
+	inert,
+}: {
+	locales: PageLocale[];
+	active: string;
+	label: string;
+	/** In the editor preview the switcher is shown but goes nowhere. */
+	inert: boolean;
+}) {
+	return (
+		<nav aria-label={label} className="flex items-center gap-1.5 text-[13px]">
+			{locales.map((locale, i) => (
+				<span key={locale.code} className="flex items-center gap-1.5">
+					{i > 0 && <span aria-hidden className="text-[var(--wl-dim)]">·</span>}
+					{locale.code === active || inert ? (
+						<span
+							aria-current={locale.code === active ? "true" : undefined}
+							className={
+								locale.code === active ? "text-[var(--wl-fg)]" : "text-[var(--wl-dim)]"
+							}
+						>
+							{locale.label}
+						</span>
+					) : (
+						<a
+							href={locale.href}
+							hrefLang={locale.code}
+							className="text-[var(--wl-dim)] transition-colors hover:text-[var(--wl-accent)]"
+						>
+							{locale.label}
+						</a>
+					)}
+				</span>
+			))}
+		</nav>
+	);
+}
+
 export function PageHeader({
 	name,
 	logoUrl,
 	ctaLabel,
 	rules,
+	locales,
+	activeLocale,
+	switcherLabel,
+	preview,
 }: {
 	name: string;
 	logoUrl: string;
 	ctaLabel: string;
 	rules: boolean;
+	/** Fewer than two languages means there is nothing to switch between. */
+	locales: PageLocale[];
+	activeLocale: string;
+	switcherLabel: string;
+	preview: boolean;
 }) {
 	return (
 		<header
@@ -139,12 +196,22 @@ export function PageHeader({
 		>
 			<Container className="flex items-center justify-between gap-4">
 				<Logo url={logoUrl} name={name} />
-				<a
-					href="#waitlist"
-					className="rounded-[var(--wl-control)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] px-3.5 py-1.5 text-[13px] text-[var(--wl-fg)] transition-colors hover:border-[var(--wl-accent)] hover:text-[var(--wl-accent)]"
-				>
-					{ctaLabel}
-				</a>
+				<div className="flex items-center gap-3.5">
+					{locales.length > 1 && (
+						<LanguageSwitcher
+							locales={locales}
+							active={activeLocale}
+							label={switcherLabel}
+							inert={preview}
+						/>
+					)}
+					<a
+						href="#waitlist"
+						className="rounded-[var(--wl-control)] border-[length:var(--wl-border-width)] border-[var(--wl-border)] px-3.5 py-1.5 text-[13px] text-[var(--wl-fg)] transition-colors hover:border-[var(--wl-accent)] hover:text-[var(--wl-accent)]"
+					>
+						{ctaLabel}
+					</a>
+				</div>
 			</Container>
 		</header>
 	);

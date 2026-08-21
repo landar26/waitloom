@@ -1,4 +1,4 @@
-import { PRODUCT_TYPES } from "@/i18n/dictionaries";
+import { LANGS, PRODUCT_TYPES } from "@/i18n/dictionaries";
 import { DEFAULT_TEMPLATE_ID, TEMPLATES } from "@/templates/registry";
 import { ACCENTS, FONTS, THEMES } from "@/templates/style";
 import { getTotals, getTraffic } from "../analytics";
@@ -8,6 +8,7 @@ import {
 	MAX_FEATURES,
 	MAX_STEPS,
 	SECTIONS,
+	localesOf,
 } from "../content";
 import { projectUrl } from "../host";
 import { limitsFor } from "../plans";
@@ -128,9 +129,63 @@ function summarize(project: Project, host: string | null) {
 		accent: project.accent,
 		font: project.font,
 		lang: project.lang,
+		locales: localesOf(project),
 		updatedAt: new Date(project.updated_at).toISOString(),
 	};
 }
+
+/** Shared by `content` and every entry of `translations`. */
+const CONTENT_SCHEMA = {
+	type: "object",
+	properties: {
+		logoUrl: { type: "string" },
+		headline: { type: "string", description: "The hero headline. Up to 90 characters." },
+		subheadline: { type: "string" },
+		ctaLabel: { type: "string", description: "The waitlist button's label." },
+		screenshotUrl: { type: "string" },
+		features: {
+			type: "array",
+			maxItems: MAX_FEATURES,
+			items: {
+				type: "object",
+				properties: { title: { type: "string" }, body: { type: "string" } },
+			},
+		},
+		howItWorks: {
+			type: "array",
+			maxItems: MAX_STEPS,
+			items: {
+				type: "object",
+				properties: { title: { type: "string" }, body: { type: "string" } },
+			},
+		},
+		faq: {
+			type: "array",
+			maxItems: MAX_FAQ,
+			items: {
+				type: "object",
+				properties: { q: { type: "string" }, a: { type: "string" } },
+			},
+		},
+		founder: {
+			type: "object",
+			properties: {
+				name: { type: "string" },
+				avatarUrl: { type: "string" },
+				bio: { type: "string" },
+			},
+		},
+		social: {
+			type: "object",
+			properties: {
+				x: { type: "string" },
+				github: { type: "string" },
+				website: { type: "string" },
+				discord: { type: "string" },
+			},
+		},
+	},
+} as const;
 
 const TOOLS: Tool[] = [
 	{
@@ -182,6 +237,7 @@ const TOOLS: Tool[] = [
 				productType: project.product_type,
 				sections: project.sections,
 				content: project.content,
+				translations: project.translations,
 				questions: await getQuestions(ctx.db, project.id),
 			});
 		},
@@ -250,8 +306,8 @@ const TOOLS: Tool[] = [
 		title: "Update a page",
 		description:
 			"Edits a page. Every field is optional and only what is sent changes — but " +
-			"`content` and `sections` are whole documents, so send the full object " +
-			"from get_project with your edits applied, not a fragment.",
+			"`content`, `translations` and `sections` are whole documents, so send the " +
+			"full object from get_project with your edits applied, not a fragment.",
 		inputSchema: {
 			type: "object",
 			properties: {
@@ -273,8 +329,10 @@ const TOOLS: Tool[] = [
 				font: { type: "string", enum: FONT_NAMES },
 				lang: {
 					type: "string",
-					enum: ["en", "zh"],
-					description: "The language of the form and section headings on the page.",
+					enum: [...LANGS],
+					description:
+						"The page's primary language: the one `content` is written in, and " +
+						"the one a visitor gets when nothing they asked for is on offer.",
 				},
 				sections: {
 					type: "array",
@@ -283,57 +341,20 @@ const TOOLS: Tool[] = [
 						`Which sections appear, in order. ${LOCKED_SECTIONS.join(" and ")} ` +
 						`are always kept.`,
 				},
-				content: {
+				content: { ...CONTENT_SCHEMA, description: "The page document, in `lang`." },
+				translations: {
 					type: "object",
-					description: "The page document.",
-					properties: {
-						logoUrl: { type: "string" },
-						headline: { type: "string", description: "The hero headline. Up to 90 characters." },
-						subheadline: { type: "string" },
-						ctaLabel: { type: "string", description: "The waitlist button's label." },
-						screenshotUrl: { type: "string" },
-						features: {
-							type: "array",
-							maxItems: MAX_FEATURES,
-							items: {
-								type: "object",
-								properties: { title: { type: "string" }, body: { type: "string" } },
-							},
-						},
-						howItWorks: {
-							type: "array",
-							maxItems: MAX_STEPS,
-							items: {
-								type: "object",
-								properties: { title: { type: "string" }, body: { type: "string" } },
-							},
-						},
-						faq: {
-							type: "array",
-							maxItems: MAX_FAQ,
-							items: {
-								type: "object",
-								properties: { q: { type: "string" }, a: { type: "string" } },
-							},
-						},
-						founder: {
-							type: "object",
-							properties: {
-								name: { type: "string" },
-								avatarUrl: { type: "string" },
-								bio: { type: "string" },
-							},
-						},
-						social: {
-							type: "object",
-							properties: {
-								x: { type: "string" },
-								github: { type: "string" },
-								website: { type: "string" },
-								discord: { type: "string" },
-							},
-						},
-					},
+					description:
+						"The page document again, once per language other than `lang` — " +
+						"`{ \"zh\": { … } }`. A visitor gets the one their browser asks for, " +
+						"and the page offers a switcher whenever there is more than one. " +
+						"Fields left blank fall back to `content`, so a partial translation " +
+						"is safe to send. Whole documents, like `content`: send the full " +
+						"map, since a language left out is removed.",
+					properties: Object.fromEntries(
+						LANGS.map((code) => [code, CONTENT_SCHEMA]),
+					),
+					additionalProperties: false,
 				},
 			},
 			required: ["projectId"],
@@ -360,6 +381,7 @@ const TOOLS: Tool[] = [
 				...summarize(result.project, ctx.host),
 				sections: result.project.sections,
 				content: result.project.content,
+				translations: result.project.translations,
 			});
 		},
 	},
@@ -399,6 +421,27 @@ const TOOLS: Tool[] = [
 								description: "Required for choice questions, up to 8.",
 							},
 							required: { type: "boolean" },
+							translations: {
+								type: "object",
+								description:
+									"The same question worded for the page's other languages — " +
+									"`{ \"zh\": { \"title\": \"…\", \"options\": [\"…\"] } }`. Options line " +
+									"up by position with `options`, because an answer is stored " +
+									"against the choice it was, not the words it wore.",
+								properties: Object.fromEntries(
+									LANGS.map((code) => [
+										code,
+										{
+											type: "object",
+											properties: {
+												title: { type: "string" },
+												options: { type: "array", items: { type: "string" } },
+											},
+										},
+									]),
+								),
+								additionalProperties: false,
+							},
 						},
 						required: ["title", "type"],
 					},

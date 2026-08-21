@@ -1,15 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScaledFrame } from "@/components/dash/scaled-frame";
 import type { AppDict } from "@/i18n/app";
-import type { Question } from "@/lib/projects";
+import { LANG_SHORT, type Lang } from "@/i18n/dictionaries";
+import { contentFor, localesOf } from "@/lib/content";
+import { questionFor, type Question } from "@/lib/projects";
 import { TemplatePage } from "@/templates/render";
 import {
 	ContentPanel,
+	LocaleTabs,
 	QuestionsPanel,
 	SectionsPanel,
 	StylePanel,
+	withPrimaryLang,
+	withQuestionPrimaryLang,
 	type Draft,
 } from "./panels";
 
@@ -46,6 +51,12 @@ export function Editor({
 	const [questions, setQuestions] = useState<Question[]>(initialQuestions);
 	const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
 	const [save, setSave] = useState<SaveState>("idle");
+	const [editing, setEditing] = useState<Lang>(initialDraft.lang);
+
+	const locales = useMemo(() => localesOf(draft), [draft]);
+	// Removing a translation, or promoting one to primary, can leave the strip
+	// pointing at a language the page no longer has.
+	const active = locales.includes(editing) ? editing : draft.lang;
 
 	// Skip the save that would otherwise fire for the initial render.
 	const dirty = useRef<{ draft: boolean; questions: boolean }>({
@@ -62,6 +73,24 @@ export function Editor({
 		dirty.current.questions = true;
 		setQuestions(next);
 	}, []);
+
+	/**
+	 * Changing which language is primary moves the page document and every
+	 * question's wording together. Both are swapped here and saved already
+	 * swapped, so the server leaves a patch that carries documents alone.
+	 */
+	const setPrimaryLang = useCallback(
+		(lang: Lang) => {
+			setEditing(lang);
+			if (draft.lang === lang) return;
+
+			dirty.current.draft = true;
+			dirty.current.questions = true;
+			setDraft(withPrimaryLang(draft, lang));
+			setQuestions((qs) => qs.map((q) => withQuestionPrimaryLang(q, draft.lang, lang)));
+		},
+		[draft],
+	);
 
 	useEffect(() => {
 		if (!dirty.current.draft) return;
@@ -80,6 +109,7 @@ export function Editor({
 						font: draft.font,
 						lang: draft.lang,
 						content: draft.content,
+						translations: draft.translations,
 						sections: draft.sections,
 					}),
 				});
@@ -116,7 +146,16 @@ export function Editor({
 		return () => clearTimeout(timer);
 	}, [questions, projectId]);
 
-	const panelProps = { projectId, draft, patch, dict };
+	const panelProps = { projectId, draft, patch, dict, editing: active, setPrimaryLang };
+	const localeStrip = (tab === "content" || tab === "questions") && (
+		<LocaleTabs
+			draft={draft}
+			patch={patch}
+			editing={active}
+			setEditing={setEditing}
+			dict={dict}
+		/>
+	);
 
 	return (
 		<div className="mx-auto grid max-w-[1500px] gap-6 px-5 py-8 sm:px-8 lg:grid-cols-[380px_minmax(0,1fr)]">
@@ -145,6 +184,8 @@ export function Editor({
 					</span>
 				</div>
 
+				{localeStrip && <div className="mt-5">{localeStrip}</div>}
+
 				<div className="mt-5">
 					{tab === "content" && <ContentPanel {...panelProps} />}
 					{tab === "sections" && <SectionsPanel {...panelProps} />}
@@ -154,6 +195,8 @@ export function Editor({
 							questions={questions}
 							setQuestions={updateQuestions}
 							dict={dict}
+							primaryLang={draft.lang}
+							editing={active}
 						/>
 					)}
 				</div>
@@ -192,16 +235,25 @@ export function Editor({
 							project={{
 								name: draft.name,
 								slug,
-								lang: draft.lang,
+								// The preview follows the language being edited, and shows the
+								// same fallbacks a visitor would get from a half-done translation.
+								lang: active,
+								locales: locales.map((code) => ({
+									code,
+									label: LANG_SHORT[code],
+									href: "#",
+								})),
 								templateId: draft.templateId,
 								theme: draft.theme,
 								accent: draft.accent,
 								font: draft.font,
 								branding,
 							}}
-							content={draft.content}
+							content={contentFor(draft, active)}
 							sections={draft.sections}
-							questions={questions.filter((q) => q.title.trim())}
+							questions={questions
+								.filter((q) => q.title.trim())
+								.map((q) => questionFor(q, active, draft.lang))}
 							preview
 						/>
 					</ScaledFrame>

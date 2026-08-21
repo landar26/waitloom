@@ -1,13 +1,17 @@
-import { PRODUCT_TYPES } from "@/i18n/dictionaries";
+import { PRODUCT_TYPES, type Lang } from "@/i18n/dictionaries";
 import {
 	DEFAULT_SECTIONS,
 	defaultContent,
+	isLangCode,
 	parseContent,
 	parseSections,
+	parseTranslations,
 	sanitizeContent,
 	sanitizeSections,
+	sanitizeTranslations,
 	type ProjectContent,
 	type SectionId,
+	type Translations,
 } from "./content";
 import { clampText } from "./validation";
 import { isValidSlug, slugify } from "./host";
@@ -32,15 +36,18 @@ export type ProjectRow = {
 	custom_domain: string | null;
 	content: string;
 	sections: string;
+	/** JSON: a ProjectContent per language other than `lang`. */
+	translations: string;
 	created_at: number;
 	updated_at: number;
 	published_at: number | null;
 };
 
 /** A row with its JSON columns already parsed — what the UI actually wants. */
-export type Project = Omit<ProjectRow, "content" | "sections"> & {
+export type Project = Omit<ProjectRow, "content" | "sections" | "translations"> & {
 	content: ProjectContent;
 	sections: SectionId[];
+	translations: Translations;
 };
 
 export type QuestionType = "short_text" | "single_choice" | "multi_choice";
@@ -53,7 +60,13 @@ export type QuestionRow = {
 	options: string;
 	required: number;
 	sort_order: number;
+	/** JSON: `{ zh: { title, options } }` for languages other than the page's. */
+	translations: string;
 };
+
+/** A question's wording in one non-primary language. */
+export type QuestionTranslation = { title: string; options: string[] };
+export type QuestionTranslations = Partial<Record<Lang, QuestionTranslation>>;
 
 export type Question = {
 	id: string;
@@ -61,18 +74,20 @@ export type Question = {
 	type: QuestionType;
 	options: string[];
 	required: boolean;
+	translations: QuestionTranslations;
 };
 
 export const MAX_QUESTIONS = 3;
 
 const COLUMNS =
-	"id, user_id, name, slug, description, product_type, template_id, theme, accent, font, lang, status, custom_domain, content, sections, created_at, updated_at, published_at";
+	"id, user_id, name, slug, description, product_type, template_id, theme, accent, font, lang, status, custom_domain, content, sections, translations, created_at, updated_at, published_at";
 
 export function hydrate(row: ProjectRow): Project {
 	return {
 		...row,
 		content: parseContent(row.content),
 		sections: parseSections(row.sections),
+		translations: parseTranslations(row.translations, row.lang),
 	};
 }
 
@@ -199,6 +214,7 @@ export async function createProject(
 		custom_domain: null,
 		content: JSON.stringify(defaultContent(name, description, productType)),
 		sections: JSON.stringify(DEFAULT_SECTIONS),
+		translations: "{}",
 		created_at: now,
 		updated_at: now,
 		published_at: null,
@@ -208,14 +224,15 @@ export async function createProject(
 		.prepare(
 			`INSERT INTO projects
 				(id, user_id, name, slug, description, product_type, template_id, theme, accent, font,
-				 lang, status, custom_domain, content, sections, created_at, updated_at, published_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 lang, status, custom_domain, content, sections, translations, created_at, updated_at,
+				 published_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		)
 		.bind(
 			row.id, row.user_id, row.name, row.slug, row.description, row.product_type,
 			row.template_id, row.theme, row.accent, row.font, row.lang, row.status,
-			row.custom_domain, row.content, row.sections, row.created_at, row.updated_at,
-			row.published_at,
+			row.custom_domain, row.content, row.sections, row.translations, row.created_at,
+			row.updated_at, row.published_at,
 		)
 		.run();
 
@@ -232,6 +249,7 @@ export type PatchInput = Partial<{
 	font: unknown;
 	lang: unknown;
 	content: unknown;
+	translations: unknown;
 	sections: unknown;
 }>;
 
@@ -287,14 +305,43 @@ export async function updateProject(
 		put("accent", next.accent);
 	}
 
-	if (patch.lang === "en" || patch.lang === "zh") {
+	// Settled before content and translations, because `lang` is what says which
+	// language `content` is written in.
+	if (isLangCode(patch.lang)) {
 		next.lang = patch.lang;
 		put("lang", next.lang);
+	}
+
+	// Switching the primary language on its own — what the settings page does —
+	// swaps the two documents over, so the founder keeps the copy they wrote in
+	// each language instead of finding it under the wrong label. The editor sends
+	// a whole draft it has already swapped itself, and those documents win.
+	if (
+		next.lang !== project.lang &&
+		patch.content === undefined &&
+		patch.translations === undefined
+	) {
+		const promoted = project.translations[next.lang as Lang];
+		if (promoted) {
+			next.content = promoted;
+			next.translations = { ...project.translations, [project.lang]: project.content };
+			delete next.translations[next.lang as Lang];
+			put("content", JSON.stringify(next.content));
+			put("translations", JSON.stringify(next.translations));
+		}
+		// The questions are stored in their own table and saved through their own
+		// endpoint, so nothing else in this request would move them.
+		await swapQuestionLanguages(db, project.id, project.lang, next.lang);
 	}
 
 	if (patch.content !== undefined) {
 		next.content = sanitizeContent(patch.content);
 		put("content", JSON.stringify(next.content));
+	}
+
+	if (patch.translations !== undefined) {
+		next.translations = sanitizeTranslations(patch.translations, next.lang);
+		put("translations", JSON.stringify(next.translations));
 	}
 
 	if (patch.sections !== undefined) {
@@ -314,6 +361,44 @@ export async function updateProject(
 		.run();
 
 	return { project: next };
+}
+
+/**
+ * Carries every question's wording across when a page changes which language is
+ * primary, so `title` and `options` keep meaning "as the page's own language
+ * words it" — the same move `updateProject` makes for the page document.
+ */
+async function swapQuestionLanguages(
+	db: D1Database,
+	projectId: string,
+	from: string,
+	to: string,
+): Promise<void> {
+	const questions = await getQuestions(db, projectId);
+	if (questions.length === 0) return;
+
+	await db.batch(
+		questions.map((question) => {
+			const promoted = isLangCode(to) ? question.translations[to] : undefined;
+			const translations = { ...question.translations };
+			if (isLangCode(to)) delete translations[to];
+			// Without a translation to promote, the wording is simply relabelled.
+			if (promoted && isLangCode(from)) {
+				translations[from] = { title: question.title, options: question.options };
+			}
+
+			return db
+				.prepare("UPDATE questions SET title = ?, options = ?, translations = ? WHERE id = ?")
+				.bind(
+					promoted?.title || question.title,
+					JSON.stringify(
+						question.options.map((option, i) => promoted?.options[i] || option),
+					),
+					JSON.stringify(translations),
+					question.id,
+				);
+		}),
+	);
 }
 
 export async function setPublished(
@@ -344,7 +429,7 @@ export async function getQuestions(
 ): Promise<Question[]> {
 	const { results } = await db
 		.prepare(
-			"SELECT id, title, type, options, required FROM questions WHERE project_id = ? ORDER BY sort_order",
+			"SELECT id, title, type, options, required, translations FROM questions WHERE project_id = ? ORDER BY sort_order",
 		)
 		.bind(projectId)
 		.all<QuestionRow>();
@@ -355,7 +440,58 @@ export async function getQuestions(
 		type: row.type,
 		options: parseOptions(row.options),
 		required: Boolean(row.required),
+		translations: parseQuestionTranslations(row.translations),
 	}));
+}
+
+function parseQuestionTranslations(raw: string | null): QuestionTranslations {
+	try {
+		return sanitizeQuestionTranslations(JSON.parse(raw ?? "{}"));
+	} catch {
+		return {};
+	}
+}
+
+export function sanitizeQuestionTranslations(raw: unknown): QuestionTranslations {
+	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+
+	const out: QuestionTranslations = {};
+	for (const [code, value] of Object.entries(raw as Record<string, unknown>)) {
+		if (!isLangCode(code)) continue;
+		const entry = (value ?? {}) as Record<string, unknown>;
+		const title = clampText(entry.title, 160) ?? "";
+		const options = (Array.isArray(entry.options) ? entry.options : [])
+			.map((o) => clampText(o, 60) ?? "")
+			.slice(0, 8);
+		if (!title && options.every((o) => !o)) continue;
+		out[code] = { title, options };
+	}
+	return out;
+}
+
+/**
+ * A question as one visitor reads it. Blanks fall back to the page's primary
+ * wording, so a half-finished translation never shows an empty choice.
+ */
+export function questionFor(
+	question: Question,
+	lang: string,
+	primaryLang: string,
+): Pick<Question, "id" | "type" | "options" | "required" | "title"> {
+	// `title` and `options` are the primary language's wording, whatever a stale
+	// translation left over from a language swap might still claim.
+	if (lang === primaryLang) return question;
+
+	const translated = isLangCode(lang) ? question.translations[lang] : undefined;
+	if (!translated) return question;
+
+	return {
+		id: question.id,
+		type: question.type,
+		required: question.required,
+		title: translated.title || question.title,
+		options: question.options.map((option, i) => translated.options[i] || option),
+	};
 }
 
 function parseOptions(raw: string | null): string[] {
@@ -414,6 +550,7 @@ export async function replaceQuestions(
 			type,
 			options,
 			required: q.required === true,
+			translations: sanitizeQuestionTranslations(q.translations),
 		});
 	}
 
@@ -425,12 +562,14 @@ export async function replaceQuestions(
 		...questions.map((q, i) =>
 			db
 				.prepare(
-					`INSERT INTO questions (id, project_id, title, type, options, required, sort_order)
-					 VALUES (?, ?, ?, ?, ?, ?, ?)
+					`INSERT INTO questions
+						(id, project_id, title, type, options, required, sort_order, translations)
+					 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 					 ON CONFLICT (id) DO UPDATE SET
 						title = excluded.title, type = excluded.type,
 						options = excluded.options, required = excluded.required,
-						sort_order = excluded.sort_order`,
+						sort_order = excluded.sort_order,
+						translations = excluded.translations`,
 				)
 				.bind(
 					q.id,
@@ -440,6 +579,7 @@ export async function replaceQuestions(
 					JSON.stringify(q.options),
 					q.required ? 1 : 0,
 					i,
+					JSON.stringify(q.translations),
 				),
 		),
 	];

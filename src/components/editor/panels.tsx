@@ -1,17 +1,25 @@
 "use client";
 
 import type { AppDict } from "@/i18n/app";
-import type { Lang } from "@/i18n/dictionaries";
+import { LANGS, LANG_LABELS, type Lang } from "@/i18n/dictionaries";
 import {
 	LOCKED_SECTIONS,
 	MAX_FAQ,
 	MAX_FEATURES,
 	MAX_STEPS,
 	SECTIONS,
+	localesOf,
+	sanitizeContent,
 	type ProjectContent,
 	type SectionId,
+	type Translations,
 } from "@/lib/content";
-import { MAX_QUESTIONS, type Question, type QuestionType } from "@/lib/projects";
+import {
+	MAX_QUESTIONS,
+	type Question,
+	type QuestionTranslation,
+	type QuestionType,
+} from "@/lib/projects";
 import { TEMPLATES } from "@/templates/registry";
 import { ACCENTS, FONTS, type AccentName, type FontName } from "@/templates/style";
 import { AddButton, Card, Field, ImageInput, TextArea, TextInput } from "./fields";
@@ -22,8 +30,10 @@ export type Draft = {
 	theme: string;
 	accent: string;
 	font: string;
+	/** The language `content` is written in. Every other one lives in translations. */
 	lang: Lang;
 	content: ProjectContent;
+	translations: Translations;
 	sections: SectionId[];
 };
 
@@ -32,19 +42,157 @@ type PanelProps = {
 	draft: Draft;
 	patch: (partial: Partial<Draft>) => void;
 	dict: AppDict;
+	/** The language being edited right now, which may not be the primary one. */
+	editing: Lang;
+	/** Owned by the editor: the flip moves the questions as well as the draft. */
+	setPrimaryLang: (lang: Lang) => void;
 };
 
-function setContent(
-	props: PanelProps,
-	partial: Partial<ProjectContent>,
-): void {
-	props.patch({ content: { ...props.draft.content, ...partial } });
+/**
+ * The document being edited. Deliberately not the merged one the page renders:
+ * a founder has to see which fields they have not translated yet.
+ */
+function activeContent({ draft, editing }: PanelProps): ProjectContent {
+	if (editing === draft.lang) return draft.content;
+	return draft.translations[editing] ?? sanitizeContent({});
+}
+
+function setContent(props: PanelProps, partial: Partial<ProjectContent>): void {
+	const { draft, editing } = props;
+	const next = { ...activeContent(props), ...partial };
+
+	if (editing === draft.lang) {
+		props.patch({ content: next });
+	} else {
+		props.patch({ translations: { ...draft.translations, [editing]: next } });
+	}
+}
+
+/**
+ * Flipping which language is primary carries the two documents with it, so the
+ * founder keeps the copy they wrote in each rather than finding it relabelled.
+ */
+export function withPrimaryLang(draft: Draft, lang: Lang): Draft {
+	if (draft.lang === lang) return draft;
+
+	const promoted = draft.translations[lang];
+	const translations = { ...draft.translations };
+	delete translations[lang];
+	if (promoted) translations[draft.lang] = draft.content;
+
+	return { ...draft, lang, content: promoted ?? draft.content, translations };
+}
+
+/** The same move for one question's wording. Mirrors the server's own swap. */
+export function withQuestionPrimaryLang(
+	question: Question,
+	from: Lang,
+	to: Lang,
+): Question {
+	if (from === to) return question;
+
+	const promoted = question.translations[to];
+	const translations = { ...question.translations };
+	delete translations[to];
+	if (promoted) {
+		translations[from] = { title: question.title, options: question.options };
+	}
+
+	return {
+		...question,
+		title: promoted?.title || question.title,
+		options: question.options.map((option, i) => promoted?.options[i] || option),
+		translations,
+	};
+}
+
+function fill(template: string, lang: Lang): string {
+	return template.replace("{lang}", LANG_LABELS[lang]);
+}
+
+/**
+ * The language strip above the Content and Questions panels. A new language
+ * starts as a copy of the primary one, so the founder edits a page that already
+ * looks finished instead of a blank form.
+ */
+export function LocaleTabs({
+	draft,
+	patch,
+	editing,
+	setEditing,
+	dict,
+}: {
+	draft: Draft;
+	patch: (partial: Partial<Draft>) => void;
+	editing: Lang;
+	setEditing: (lang: Lang) => void;
+	dict: AppDict;
+}) {
+	const t = dict.editor.locales;
+	const present = localesOf(draft);
+	const missing = LANGS.filter((code) => !present.includes(code));
+
+	const add = (code: Lang) => {
+		patch({ translations: { ...draft.translations, [code]: draft.content } });
+		setEditing(code);
+	};
+
+	const remove = () => {
+		if (editing === draft.lang) return;
+		if (!confirm(t.removeConfirm)) return;
+		const translations = { ...draft.translations };
+		delete translations[editing];
+		patch({ translations });
+		setEditing(draft.lang);
+	};
+
+	return (
+		<div className="space-y-2">
+			<div className="flex flex-wrap items-center gap-2">
+				{present.map((code) => (
+					<Chip key={code} active={code === editing} onClick={() => setEditing(code)}>
+						{LANG_LABELS[code]}
+						{code === draft.lang && (
+							<span className="ml-1.5 text-[11px] text-dim">{t.primary}</span>
+						)}
+					</Chip>
+				))}
+
+				{missing.map((code) => (
+					<button
+						key={code}
+						type="button"
+						onClick={() => add(code)}
+						className="rounded-full border border-dashed border-line px-3 py-1.5 text-[13px] text-dim transition-colors hover:border-dim hover:text-fg"
+					>
+						{fill(t.add, code)}
+					</button>
+				))}
+
+				{editing !== draft.lang && (
+					<button
+						type="button"
+						onClick={remove}
+						className="ml-auto text-[12.5px] text-dim transition-colors hover:text-brand-2"
+					>
+						{t.remove}
+					</button>
+				)}
+			</div>
+
+			{editing !== draft.lang && (
+				<p className="text-[12.5px] leading-relaxed text-dim">
+					{fill(t.hint, draft.lang)}
+				</p>
+			)}
+		</div>
+	);
 }
 
 export function ContentPanel(props: PanelProps) {
 	const { draft, dict, projectId } = props;
 	const t = dict.editor.fields;
-	const c = draft.content;
+	const c = activeContent(props);
 	const has = (id: SectionId) => draft.sections.includes(id);
 
 	return (
@@ -348,7 +496,7 @@ export function SectionsPanel({ draft, patch, dict }: PanelProps) {
 	);
 }
 
-export function StylePanel({ draft, patch, dict }: PanelProps) {
+export function StylePanel({ draft, patch, dict, setPrimaryLang }: PanelProps) {
 	const t = dict.editor.style;
 	const custom = !(draft.accent in ACCENTS);
 
@@ -425,12 +573,16 @@ export function StylePanel({ draft, patch, dict }: PanelProps) {
 
 			<Field label={t.language}>
 				<div className="flex gap-2">
-					<Chip active={draft.lang === "en"} onClick={() => patch({ lang: "en" })}>
-						English
-					</Chip>
-					<Chip active={draft.lang === "zh"} onClick={() => patch({ lang: "zh" })}>
-						中文
-					</Chip>
+					{LANGS.map((code) => (
+						<Chip
+							key={code}
+							active={draft.lang === code}
+							// Not just `lang`: every document the page has moves with it.
+							onClick={() => setPrimaryLang(code)}
+						>
+							{LANG_LABELS[code]}
+						</Chip>
+					))}
 				</div>
 			</Field>
 		</div>
@@ -443,10 +595,14 @@ export function QuestionsPanel({
 	questions,
 	setQuestions,
 	dict,
+	primaryLang,
+	editing,
 }: {
 	questions: Question[];
 	setQuestions: (next: Question[]) => void;
 	dict: AppDict;
+	primaryLang: Lang;
+	editing: Lang;
 }) {
 	const t = dict.editor.questions;
 	const typeLabel: Record<QuestionType, string> = {
@@ -455,84 +611,127 @@ export function QuestionsPanel({
 		multi_choice: t.multiChoice,
 	};
 
+	// A translation restates the wording; the shape of the question is shared,
+	// because an answer stored against option 2 has to mean the same thing in
+	// every language.
+	const translating = editing !== primaryLang;
+
 	const update = (index: number, partial: Partial<Question>) =>
 		setQuestions(questions.map((q, i) => (i === index ? { ...q, ...partial } : q)));
 
+	const wording = (question: Question): QuestionTranslation =>
+		translating
+			? (question.translations[editing] ?? { title: "", options: [] })
+			: { title: question.title, options: question.options };
+
+	const setWording = (
+		index: number,
+		question: Question,
+		partial: Partial<QuestionTranslation>,
+	) => {
+		if (!translating) {
+			update(index, partial);
+			return;
+		}
+		update(index, {
+			translations: {
+				...question.translations,
+				[editing]: { ...wording(question), ...partial },
+			},
+		});
+	};
+
 	return (
 		<div className="space-y-3">
-			<p className="text-[13px] leading-relaxed text-dim">{t.intro}</p>
+			<p className="text-[13px] leading-relaxed text-dim">
+				{translating
+					? dict.editor.locales.questionsHint.replace("{lang}", LANG_LABELS[primaryLang])
+					: t.intro}
+			</p>
 
 			{questions.map((question, i) => (
 				<Card
 					key={question.id}
 					title={`${i + 1}`}
 					removeLabel={dict.editor.fields.remove}
-					onRemove={() => setQuestions(questions.filter((_, j) => j !== i))}
+					onRemove={
+						translating
+							? undefined
+							: () => setQuestions(questions.filter((_, j) => j !== i))
+					}
 				>
 					<TextInput
-						value={question.title}
-						placeholder={t.titlePlaceholder}
-						onChange={(title) => update(i, { title })}
+						value={wording(question).title}
+						placeholder={translating ? question.title : t.titlePlaceholder}
+						onChange={(title) => setWording(i, question, { title })}
 					/>
 
-					<div className="flex flex-wrap gap-2 pt-1">
-						{QUESTION_TYPES.map((type) => (
-							<Chip
-								key={type}
-								active={question.type === type}
-								onClick={() =>
-									update(i, {
-										type,
-										options:
-											type === "short_text"
-												? []
-												: question.options.length > 0
-													? question.options
-													: ["", ""],
-									})
-								}
-							>
-								{typeLabel[type]}
-							</Chip>
-						))}
-					</div>
+					{!translating && (
+						<div className="flex flex-wrap gap-2 pt-1">
+							{QUESTION_TYPES.map((type) => (
+								<Chip
+									key={type}
+									active={question.type === type}
+									onClick={() =>
+										update(i, {
+											type,
+											options:
+												type === "short_text"
+													? []
+													: question.options.length > 0
+														? question.options
+														: ["", ""],
+										})
+									}
+								>
+									{typeLabel[type]}
+								</Chip>
+							))}
+						</div>
+					)}
 
 					{question.type !== "short_text" && (
 						<div className="space-y-2 pt-1">
 							{question.options.map((option, j) => (
 								<div key={j} className="flex gap-2">
 									<TextInput
-										value={option}
-										placeholder={t.optionPlaceholder}
+										value={translating ? (wording(question).options[j] ?? "") : option}
+										placeholder={translating ? option : t.optionPlaceholder}
 										maxLength={60}
-										onChange={(value) =>
-											update(i, {
-												options: question.options.map((o, k) => (k === j ? value : o)),
-											})
-										}
+										onChange={(value) => {
+											const current = wording(question).options;
+											const options = question.options.map((o, k) =>
+												k === j ? value : (translating ? (current[k] ?? "") : o),
+											);
+											setWording(i, question, { options });
+										}}
 									/>
-									<button
-										type="button"
-										onClick={() =>
-											update(i, { options: question.options.filter((_, k) => k !== j) })
-										}
-										className="shrink-0 rounded-lg border border-line px-2.5 text-[13px] text-dim transition-colors hover:border-dim hover:text-fg"
-									>
-										×
-									</button>
+									{!translating && (
+										<button
+											type="button"
+											onClick={() =>
+												update(i, { options: question.options.filter((_, k) => k !== j) })
+											}
+											className="shrink-0 rounded-lg border border-line px-2.5 text-[13px] text-dim transition-colors hover:border-dim hover:text-fg"
+										>
+											×
+										</button>
+									)}
 								</div>
 							))}
-							<AddButton
-								label={t.addOption}
-								disabled={question.options.length >= 8}
-								onClick={() => update(i, { options: [...question.options, ""] })}
-							/>
+							{!translating && (
+								<AddButton
+									label={t.addOption}
+									disabled={question.options.length >= 8}
+									onClick={() => update(i, { options: [...question.options, ""] })}
+								/>
+							)}
 						</div>
 					)}
 				</Card>
 			))}
 
-			{questions.length >= MAX_QUESTIONS ? (
+			{translating ? null : questions.length >= MAX_QUESTIONS ? (
 				<p className="text-[12.5px] text-dim">{t.full}</p>
 			) : (
 				<AddButton
@@ -546,6 +745,7 @@ export function QuestionsPanel({
 								type: "short_text",
 								options: [],
 								required: false,
+								translations: {},
 							},
 						])
 					}

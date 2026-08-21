@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { slugFromHost } from "@/lib/host";
+import { projectUrl, slugFromHost } from "@/lib/host";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -11,9 +11,14 @@ import { SITE_URL } from "@/lib/site";
 export default async function robots(): Promise<MetadataRoute.Robots> {
 	const host = (await headers()).get("host");
 
-	if (slugFromHost(host)) {
-		// A founder's page is one URL and we want it indexed.
-		return { rules: [{ userAgent: "*", allow: "/", disallow: ["/api/"] }] };
+	const slug = slugFromHost(host);
+	if (slug) {
+		// A founder's page is one URL per language it is written in, and we want
+		// every one of them indexed — hence its own sitemap.
+		return {
+			rules: [{ userAgent: "*", allow: "/", disallow: ["/api/"] }],
+			sitemap: `${projectUrl(slug, host)}/sitemap.xml`,
+		};
 	}
 
 	return {

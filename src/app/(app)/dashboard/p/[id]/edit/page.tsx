@@ -40,6 +40,7 @@ export default async function EditPage({
 				font: project.font,
 				lang: project.lang as Lang,
 				content: project.content,
+				translations: project.translations,
 				sections: project.sections,
 			}}
 			initialQuestions={questions}
