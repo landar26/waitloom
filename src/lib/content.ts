@@ -379,7 +379,10 @@ export function mergeContent(
 	if (!translation) return primary;
 
 	return {
-		logoUrl: pick(translation.logoUrl, primary.logoUrl),
+		// One product, one mark. A translation that carried its own logo would
+		// keep showing the old one every time the founder replaces it on the
+		// primary tab — same rule as the call to action below.
+		logoUrl: primary.logoUrl,
 		headline: pick(translation.headline, primary.headline),
 		subheadline: pick(translation.subheadline, primary.subheadline),
 		ctaLabel: pick(translation.ctaLabel, primary.ctaLabel),

@@ -73,6 +73,11 @@ function setCta(props: PanelProps, partial: Partial<Cta>): void {
 	});
 }
 
+/** The logo is the page's too, by the same rule — and read back from there. */
+function setLogo(props: PanelProps, logoUrl: string): void {
+	props.patch({ content: { ...props.draft.content, logoUrl } });
+}
+
 function setContent(props: PanelProps, partial: Partial<ProjectContent>): void {
 	const { draft, editing } = props;
 	const next = { ...activeContent(props), ...partial };
@@ -267,8 +272,8 @@ export function ContentPanel(props: PanelProps) {
 			<Field label={t.logo}>
 				<ImageInput
 					projectId={projectId}
-					value={c.logoUrl}
-					onChange={(logoUrl) => setContent(props, { logoUrl })}
+					value={draft.content.logoUrl}
+					onChange={(logoUrl) => setLogo(props, logoUrl)}
 					dict={dict}
 				/>
 			</Field>
