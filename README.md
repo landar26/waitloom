@@ -1,25 +1,37 @@
-# Waitloom — pre-launch site
+# Waitloom
 
-The public pre-launch page for Waitloom, in English (`/`) and Chinese (`/zh`),
-plus the waitlist that backs it. Next.js 16 + Tailwind 4 on Cloudflare Workers
-(OpenNext), with subscribers stored in D1.
+A pre-launch page builder for indie founders: describe a product, pick one of six
+templates, publish to `<slug>.waitloom.app`, and collect a waitlist with up to
+three validation questions. Next.js 16 + Tailwind 4 on Cloudflare Workers
+(OpenNext), with everything in D1 and uploads in R2.
+
+The repository also contains Waitloom's own bilingual marketing site at `/` and
+`/zh`, with its own waitlist behind `/admin`. That is a separate concern from the
+product and uses its own tables — see [Two waitlists](#two-waitlists).
 
 ## What's here
 
 ```
 src/
 ├── app/
-│   ├── (en)/page.tsx          /        English landing page
-│   ├── (en)/admin/page.tsx    /admin   founder-only waitlist dashboard
-│   ├── (zh)/zh/page.tsx       /zh      Chinese landing page
-│   └── api/                            waitlist, answers, pageview hits, CSV export
-├── components/                         landing sections + the six template previews
-├── i18n/dictionaries.ts                every string on the site, en + zh
-└── lib/                                D1 access, validation, waitlist + traffic queries
+│   ├── (en)/page.tsx              /                    English marketing page
+│   ├── (en)/admin/page.tsx        /admin               Waitloom's own waitlist dashboard
+│   ├── (zh)/zh/page.tsx           /zh                  Chinese marketing page
+│   ├── (app)/login                /login               Google sign-in
+│   ├── (app)/dashboard            /dashboard           projects, editor, subscribers, analytics
+│   ├── (site)/s/[slug]            <slug>.waitloom.app  a published page
+│   ├── api/                                            auth, projects, uploads, public join/hit
+│   └── media/[...key]             /media/…             uploaded images, out of R2
+├── templates/                     six templates: style tokens + shared sections
+├── components/
+│   ├── dash/  editor/  public/                         app UI, block editor, public form
+├── i18n/                          dictionaries.ts (marketing) · app.ts (dashboard) · page.ts (public)
+└── lib/                           auth, projects, subscribers, content, hosts, plans
 ```
 
-Each language has its own root layout so the served HTML carries the right
-`lang` attribute; both render the same `<Landing />` from the shared dictionary.
+Four root layouts, one per route group: the marketing pages and the dashboard
+wear Waitloom's dark chrome (`.app-shell`), while a published page carries only
+the palette its founder chose.
 
 ## Local development
 
@@ -29,15 +41,56 @@ npm run db:migrate:local
 npm run dev
 ```
 
-`.dev.vars` holds the real secrets (`ADMIN_PASSWORD`, `IP_SALT`); it is
-gitignored and is also the source for `npm run secrets:push`. `/admin` and `/api/admin/*` sit behind HTTP Basic auth — any
-username, the password from `ADMIN_PASSWORD`.
+`.dev.vars` holds the real secrets — see `.dev.vars.example` for the keys. It is
+gitignored and is also the source for `npm run secrets:push`. `/admin` and
+`/api/admin/*` sit behind HTTP Basic auth — any username, the password from
+`ADMIN_PASSWORD`.
 
-Inspect what the form collected:
+**Signing in locally.** Google OAuth works against `http://localhost:3000` once
+the client exists, but `GET /api/auth/dev` mints a session for a throwaway
+account without touching a real Google account. It returns 404 in a production
+build.
+
+**Published pages locally.** Wildcard DNS does not exist on localhost, so
+`projectUrl()` falls back to the path form: a page published as `halo` is at
+`http://localhost:3000/s/halo`. To exercise the real subdomain path, send the
+Host header yourself:
 
 ```bash
-npx wrangler d1 execute waitloom-db --local --command "SELECT * FROM subscribers"
+curl -H "Host: halo.waitloom.app" http://127.0.0.1:3000/
 ```
+
+Inspect what a project collected:
+
+```bash
+npx wrangler d1 execute waitloom-db --local --command "SELECT email, source FROM project_subscribers"
+```
+
+## Two waitlists
+
+`subscribers` / `answers` belong to Waitloom's own marketing page and are read by
+`/admin` through `src/lib/waitlist.ts`. `project_subscribers` / `project_answers`
+belong to founders' projects and are read by the dashboard through
+`src/lib/subscribers.ts`.
+
+They are separate tables on purpose. Folding the marketing list into the product
+one would have meant rebuilding `subscribers` to trade its global `UNIQUE(email)`
+for `UNIQUE(project_id, email)` — and D1 enforces foreign keys, so dropping the
+old table fires `answers`' `ON DELETE CASCADE` and takes every live answer with
+it. The query logic is shared at the module level instead.
+
+## Templates
+
+A template is a pair of neutral palettes (light and dark) plus a shape — radii,
+border width, hero alignment, heading weight — declared in
+`src/templates/registry.ts`. `resolveStyle()` turns that, the founder's accent and
+their font choice into CSS custom properties, and every section component reads
+those variables. No section branches on which template it is inside, which is why
+six templates cost roughly one template's worth of markup.
+
+`<TemplatePage>` is the single renderer, used by the published page, the editor
+preview and the marketing gallery alike — so the homepage cannot drift from what
+a founder actually gets.
 
 ## Traffic
 
@@ -51,9 +104,9 @@ hash lands in `visitor_days` — that dedupe is what makes the conversion rate o
 Days everywhere are bucketed in Beijing time (`src/lib/day.ts`), not the UTC that
 Workers reports as local.
 
-`project_id` is the string `"waitloom"` today. It exists so the same two tables
-and the same module carry over unchanged when the MVP hosts many projects; only
-`PROJECT_ID` has to become a lookup.
+`page_stats.project_id` is the marketing site's own `"waitloom"` for `/api/hit`,
+and a real project UUID for `/api/p/[slug]/hit` — the id rather than the slug, so
+renaming a page does not orphan its history.
 
 Traffic is not backfillable — numbers start from the first visit after deploy.
 
@@ -62,6 +115,39 @@ Traffic is not backfillable — numbers start from the first visit after deploy.
 The `waitloom-db` database already exists (id in `wrangler.jsonc`) and has the
 schema applied. `wrangler.jsonc` also claims `waitloom.app` as a
 custom domain, which requires that zone to be in the same Cloudflare account.
+
+### One-time setup for the product
+
+1. **Wildcard subdomain.** Published pages live at `<slug>.waitloom.app`. Custom
+   Domains cannot be wildcards, so `wrangler.jsonc` carries the route
+   `*.waitloom.app/*` — which needs a **proxied** DNS record on the zone to
+   attach to: type `A`, name `*`, content `192.0.2.0` (or `AAAA` → `100::`),
+   orange cloud on. Universal SSL covers first-level wildcards, so no extra
+   certificate is needed.
+
+2. **R2 bucket** for logos and screenshots:
+
+   ```bash
+   npx wrangler r2 bucket create waitloom-media
+   ```
+
+3. **Google OAuth client** (Cloud Console → Credentials → OAuth client ID → Web
+   application). Add both redirect URIs:
+
+   ```
+   https://waitloom.app/api/auth/callback/google
+   http://localhost:3000/api/auth/callback/google
+   ```
+
+   Put the id and secret in `.dev.vars` as `GOOGLE_CLIENT_ID` and
+   `GOOGLE_CLIENT_SECRET`.
+
+4. **Flip the launch switch.** `APP_LAUNCHED` in `src/lib/site.ts` is `false`
+   until the three steps above are done; it swaps the marketing CTAs from "join
+   the waitlist" to "create your page". The waitlist form stays in the page
+   either way, so turning it back off loses nothing.
+
+### Every deploy
 
 1. Push the secrets from `.dev.vars` (the same values are used locally and in
    production, so there is one source of truth):
@@ -101,12 +187,30 @@ before any deploy, since that is the runtime the site actually runs on.
 
 ## Waitlist behaviour
 
+Shared by both waitlists:
+
 - Email is normalized and de-duplicated; a repeat signup silently returns the
   original queue position instead of an error.
 - Source is derived from `utm_source`, falling back to the referrer host
   (x / reddit / producthunt / hackernews / …); a same-host referrer counts as
   direct.
-- Two optional validation questions are asked *after* the email is stored, so
-  skipping them never costs a signup.
+- Validation questions are asked *after* the email is stored, so skipping them
+  never costs a signup. Founders get up to three; the marketing page has two
+  fixed ones.
 - A hidden honeypot field and a 5-per-hour-per-IP cap keep casual bots out. IPs
   are only ever stored as a salted SHA-256 hash.
+
+## Plans
+
+`src/lib/plans.ts` holds the PRD's limits, enforced at the two choke points that
+matter — creating a project and joining a waitlist.
+
+`MAX_PROJECTS` (5 per account, every plan) binds today: it is an abuse guard
+rather than a paywall, so it applies regardless of `BILLING_ENABLED`. Creating a
+sixth project returns `403 project_limit`, and the dashboard hides the create
+button at the cap.
+
+The rest — the 50-subscriber cap and the "Made with Waitloom" branding flag —
+stay non-binding while `BILLING_ENABLED` is `false`: capping a free founder at 50
+subscribers with no way to pay would break the loop the product exists to prove.
+Flip it when checkout lands.

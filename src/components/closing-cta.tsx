@@ -1,4 +1,5 @@
 import type { Dict } from "@/i18n/dictionaries";
+import { APP_LAUNCHED } from "@/lib/site";
 
 export function ClosingCta({ dict }: { dict: Dict }) {
 	return (
@@ -14,12 +15,14 @@ export function ClosingCta({ dict }: { dict: Dict }) {
 				<h2 className="text-balance text-3xl font-semibold tracking-[-0.02em] sm:text-[2.6rem] sm:leading-[1.1]">
 					{dict.closing.title}
 				</h2>
-				<p className="mt-4 text-[16px] text-muted">{dict.closing.subtitle}</p>
+				<p className="mt-4 text-[16px] text-muted">
+					{APP_LAUNCHED ? dict.closing.subtitleLive : dict.closing.subtitle}
+				</p>
 				<a
-					href="#join"
+					href={APP_LAUNCHED ? "/login" : "#join"}
 					className="mt-8 inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-semibold text-[#1a0d05] transition-opacity hover:opacity-90"
 				>
-					{dict.nav.cta}
+					{APP_LAUNCHED ? dict.nav.ctaApp : dict.nav.cta}
 				</a>
 			</div>
 		</section>

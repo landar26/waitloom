@@ -2,7 +2,7 @@
 #
 # Upload the secrets in .dev.vars to the deployed Cloudflare Worker.
 #
-#   ./scripts/put-secrets.sh              # push ADMIN_PASSWORD and IP_SALT
+#   ./scripts/put-secrets.sh              # push every key listed in KEYS below
 #   ./scripts/put-secrets.sh IP_SALT      # push only the keys you name
 #   ./scripts/put-secrets.sh -y           # skip the confirmation prompt
 #   ENV_FILE=.dev.vars.prod ./scripts/put-secrets.sh
@@ -37,7 +37,7 @@ for arg in "$@"; do
 done
 
 if [ ${#KEYS[@]} -eq 0 ]; then
-	KEYS=(ADMIN_PASSWORD IP_SALT)
+	KEYS=(ADMIN_PASSWORD IP_SALT GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET)
 fi
 
 if [ ! -f "$ENV_FILE" ]; then

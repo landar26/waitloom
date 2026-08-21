@@ -22,6 +22,10 @@ export function SiteFooter({ dict }: { dict: Dict }) {
 						{dict.nav.langLabel}
 					</Link>
 					<span className="text-line">·</span>
+					<a href="/login" className="hover:text-fg">
+						{dict.nav.signIn}
+					</a>
+					<span className="text-line">·</span>
 					<span>
 						© {new Date().getFullYear()} {dict.footer.rights}
 					</span>

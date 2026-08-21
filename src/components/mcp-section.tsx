@@ -4,9 +4,9 @@ import type { Dict } from "@/i18n/dictionaries";
 const CONFIG = `{
   "mcpServers": {
     "waitloom": {
-      "command": "npx",
-      "args": ["-y", "@waitloom/mcp"],
-      "env": { "WAITLOOM_TOKEN": "wl_..." }
+      "type": "http",
+      "url": "https://waitloom.app/api/mcp",
+      "headers": { "Authorization": "Bearer wl_..." }
     }
   }
 }`;

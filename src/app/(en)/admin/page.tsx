@@ -2,6 +2,13 @@ import type { Metadata } from "next";
 import { getDb } from "@/lib/db";
 import { SERIES_DAYS, getStats, listSubscribers, type DayPoint } from "@/lib/waitlist";
 import { PROJECT_ID, getTraffic, type Traffic } from "@/lib/analytics";
+import {
+	Bars,
+	SourceTable,
+	Sparkbars,
+	Stat,
+	mergeSources,
+} from "@/components/dash/stats";
 import { en } from "@/i18n/dictionaries";
 
 export const dynamic = "force-dynamic";
@@ -13,170 +20,6 @@ export const metadata: Metadata = {
 
 const PRODUCT_LABELS = en.productTypes as Record<string, string>;
 const LANG_LABELS: Record<string, string> = { en: "English", zh: "中文" };
-
-function Stat({
-	label,
-	value,
-	hint,
-}: {
-	label: string;
-	value: string | number;
-	hint?: string;
-}) {
-	return (
-		<div className="rounded-xl border border-line bg-ink-2 p-5">
-			<p className="text-[12px] uppercase tracking-[0.12em] text-dim">
-				{label}
-			</p>
-			<p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
-			{hint && <p className="mt-1 text-[12.5px] text-dim">{hint}</p>}
-		</div>
-	);
-}
-
-function Bars({
-	title,
-	rows,
-	labels,
-}: {
-	title: string;
-	rows: Array<{ label: string; count: number; pct: number }>;
-	labels?: Record<string, string>;
-}) {
-	return (
-		<div className="rounded-xl border border-line bg-ink-2 p-5">
-			<p className="text-[12px] uppercase tracking-[0.12em] text-dim">
-				{title}
-			</p>
-			<div className="mt-4 space-y-2.5">
-				{rows.length === 0 && (
-					<p className="text-[13px] text-dim">No data yet.</p>
-				)}
-				{rows.map((row) => (
-					<div key={row.label} className="flex items-center gap-3">
-						<span className="w-32 shrink-0 truncate text-[13px] text-muted">
-							{labels?.[row.label] ?? row.label}
-						</span>
-						<span className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink-3">
-							<span
-								className="block h-full rounded-full bg-brand"
-								style={{ width: `${Math.max(row.pct, 2)}%` }}
-							/>
-						</span>
-						<span className="w-16 shrink-0 text-right font-mono text-[12px] text-dim">
-							{row.pct}% · {row.count}
-						</span>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
-
-function Sparkbars({
-	title,
-	points,
-	tone = "bg-brand",
-}: {
-	title: string;
-	points: DayPoint[];
-	tone?: string;
-}) {
-	const max = points.reduce((n, p) => Math.max(n, p.count), 0);
-
-	return (
-		<div className="rounded-xl border border-line bg-ink-2 p-5">
-			<p className="text-[12px] uppercase tracking-[0.12em] text-dim">
-				{title}
-			</p>
-			{max === 0 ? (
-				<p className="mt-4 text-[13px] text-dim">Nothing in the last 30 days.</p>
-			) : (
-				<>
-					<div className="mt-4 flex h-24 items-end gap-[3px]">
-						{points.map((point) => (
-							<span
-								key={point.day}
-								title={`${point.day} · ${point.count}`}
-								className={`flex-1 rounded-t-sm ${tone}`}
-								style={{ height: `${Math.max((point.count / max) * 100, 2)}%` }}
-							/>
-						))}
-					</div>
-					<div className="mt-2 flex justify-between font-mono text-[11px] text-dim">
-						<span>{points[0]?.day}</span>
-						<span>{points[points.length - 1]?.day}</span>
-					</div>
-				</>
-			)}
-		</div>
-	);
-}
-
-type SourceRow = {
-	label: string;
-	visitors: number;
-	signups: number;
-};
-
-/** Sources are only interesting next to what they converted into. */
-function SourceTable({ rows, tracking }: { rows: SourceRow[]; tracking: boolean }) {
-	return (
-		<div className="rounded-xl border border-line bg-ink-2 p-5">
-			<p className="text-[12px] uppercase tracking-[0.12em] text-dim">Sources</p>
-			<table className="mt-4 w-full border-collapse text-[13px]">
-				<thead className="text-[11px] uppercase tracking-[0.1em] text-dim">
-					<tr>
-						<th className="pb-2 text-left font-medium">Source</th>
-						<th className="pb-2 text-right font-medium">Visitors</th>
-						<th className="pb-2 text-right font-medium">Signups</th>
-						<th className="pb-2 text-right font-medium">Conv.</th>
-					</tr>
-				</thead>
-				<tbody>
-					{rows.length === 0 && (
-						<tr>
-							<td className="py-2 text-dim" colSpan={4}>
-								No data yet.
-							</td>
-						</tr>
-					)}
-					{rows.map((row) => (
-						<tr key={row.label} className="border-t border-line-soft">
-							<td className="py-2 pr-2 text-muted">{row.label}</td>
-							<td className="py-2 text-right font-mono text-[12.5px]">
-								{tracking ? row.visitors : "—"}
-							</td>
-							<td className="py-2 text-right font-mono text-[12.5px]">
-								{row.signups}
-							</td>
-							<td className="py-2 text-right font-mono text-[12.5px] text-brand-2">
-								{row.visitors > 0
-									? `${Math.round((row.signups / row.visitors) * 100)}%`
-									: "—"}
-							</td>
-						</tr>
-					))}
-				</tbody>
-			</table>
-		</div>
-	);
-}
-
-/** Union of the sources people came from and the sources they signed up from. */
-function mergeSources(traffic: Traffic, signups: Array<{ label: string; count: number }>) {
-	const rows = new Map<string, SourceRow>();
-	for (const s of traffic.sources)
-		rows.set(s.label, { label: s.label, visitors: s.visitors, signups: 0 });
-	for (const s of signups) {
-		const row = rows.get(s.label);
-		if (row) row.signups = s.count;
-		else rows.set(s.label, { label: s.label, visitors: 0, signups: s.count });
-	}
-	return [...rows.values()].sort(
-		(a, b) => b.visitors - a.visitors || b.signups - a.signups,
-	);
-}
 
 export default async function AdminPage() {
 	const db = await getDb();
@@ -275,7 +118,11 @@ export default async function AdminPage() {
 						tone="bg-brand-2"
 					/>
 				)}
-				<Sparkbars title="Signups · last 30 days" points={stats.series} />
+				<Sparkbars
+						title="Signups · last 30 days"
+						points={stats.series}
+						empty="Nothing in the last 30 days."
+					/>
 			</div>
 
 			<div className="mt-4 grid gap-4 lg:grid-cols-2">
@@ -291,7 +138,12 @@ export default async function AdminPage() {
 			</div>
 
 			<div className="mt-4 grid gap-4 lg:grid-cols-2">
-				<Bars title="Language" rows={stats.langs} labels={LANG_LABELS} />
+				<Bars
+						title="Language"
+						rows={stats.langs}
+						labels={LANG_LABELS}
+						empty="No data yet."
+					/>
 				{utmRows.length > 0 && (
 					<Bars
 						title={hasCampaigns ? "Campaigns" : "UTM medium"}

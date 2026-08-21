@@ -79,3 +79,66 @@ export function ogImageResponse() {
 		ogSize,
 	);
 }
+
+/** The share card for a founder's published page. */
+export function projectOgImageResponse(input: {
+	name: string;
+	headline: string;
+	accent: string;
+	dark: boolean;
+	branding: boolean;
+}) {
+	const bg = input.dark ? "#0b0b0d" : "#ffffff";
+	const fg = input.dark ? "#f4f4f5" : "#111111";
+	const muted = input.dark ? "#a1a1aa" : "#6b6b6b";
+
+	return new ImageResponse(
+		(
+			<div
+				style={{
+					width: "100%",
+					height: "100%",
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "space-between",
+					background: bg,
+					padding: 72,
+					fontFamily: "sans-serif",
+				}}
+			>
+				<div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+					<div
+						style={{
+							width: 14,
+							height: 14,
+							borderRadius: 999,
+							background: input.accent,
+						}}
+					/>
+					<span style={{ color: fg, fontSize: 32, fontWeight: 600 }}>
+						{input.name}
+					</span>
+				</div>
+
+				<span
+					style={{
+						color: fg,
+						fontSize: input.headline.length > 60 ? 60 : 76,
+						fontWeight: 700,
+						letterSpacing: -2.2,
+						lineHeight: 1.06,
+						maxWidth: 1000,
+					}}
+				>
+					{input.headline}
+				</span>
+
+				<div style={{ display: "flex", justifyContent: "space-between", color: muted, fontSize: 26 }}>
+					<span style={{ color: input.accent }}>Join the waitlist</span>
+					{input.branding && <span>Made with Waitloom</span>}
+				</div>
+			</div>
+		),
+		ogSize,
+	);
+}

@@ -156,3 +156,44 @@ export async function pruneVisitorDays(
 		.bind(dayKey(Date.now() - keepDays * DAY_MS))
 		.run();
 }
+
+export type Totals = { views: number; visitors: number };
+
+/**
+ * Traffic totals for several projects at once — the dashboard list would
+ * otherwise run one getTraffic per card.
+ */
+export async function getTotals(
+	db: D1Database,
+	projectIds: string[],
+	days: number,
+): Promise<Map<string, Totals>> {
+	const totals = new Map<string, Totals>();
+	if (projectIds.length === 0) return totals;
+
+	const from = recentDays(days)[0];
+	const placeholders = projectIds.map(() => "?").join(", ");
+
+	try {
+		const { results } = await db
+			.prepare(
+				`SELECT project_id, SUM(views) AS views, SUM(visitors) AS visitors
+				 FROM page_stats WHERE project_id IN (${placeholders}) AND day >= ?
+				 GROUP BY project_id`,
+			)
+			.bind(...projectIds, from)
+			.all<{ project_id: string; views: number; visitors: number }>();
+
+		for (const row of results ?? []) {
+			totals.set(row.project_id, {
+				views: Number(row.views),
+				visitors: Number(row.visitors),
+			});
+		}
+	} catch (error) {
+		// A dashboard without traffic numbers still beats a dashboard that 500s.
+		console.error("getTotals failed", error);
+	}
+
+	return totals;
+}

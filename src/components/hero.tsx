@@ -1,5 +1,6 @@
 import { WaitlistForm } from "./waitlist-form";
 import type { Dict, Lang } from "@/i18n/dictionaries";
+import { APP_LAUNCHED } from "@/lib/site";
 
 export function Hero({
 	dict,
@@ -30,7 +31,24 @@ export function Hero({
 				</p>
 
 				<div className="mt-8">
-					<WaitlistForm dict={dict} lang={lang} shareUrl={shareUrl} />
+					{APP_LAUNCHED ? (
+						<div className="flex flex-wrap items-center justify-center gap-4">
+							<a
+								href="/login"
+								className="inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-semibold text-[#1a0d05] transition-opacity hover:opacity-90"
+							>
+								{dict.nav.ctaApp}
+							</a>
+							<a
+								href="/login"
+								className="text-[14px] text-muted underline-offset-4 transition-colors hover:text-fg hover:underline"
+							>
+								{dict.nav.signIn}
+							</a>
+						</div>
+					) : (
+						<WaitlistForm dict={dict} lang={lang} shareUrl={shareUrl} />
+					)}
 				</div>
 
 				<div className="mt-7 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">

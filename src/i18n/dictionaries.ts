@@ -27,11 +27,13 @@ export const en = {
 		mcp: "MCP",
 		faq: "FAQ",
 		cta: "Join waitlist",
+		ctaApp: "Create your page",
+		signIn: "Sign in",
 		langLabel: "中文",
 		langHref: "/zh",
 	},
 	hero: {
-		badge: "Pre-launch · building in public",
+		badge: "Live · built in public",
 		title: "Launch before you launch.",
 		subtitle:
 			"Create a beautiful pre-launch page, validate your idea, and grow your first audience — in minutes.",
@@ -118,13 +120,13 @@ export const en = {
 			},
 			{
 				title: "Custom domain",
-				body: "Point launch.yourproduct.com at your page. SSL, HTTPS and domain verification are handled for you.",
-				tag: "",
+				body: "Coming next: point launch.yourproduct.com at your page, with SSL and domain verification handled for you. Today every page lives on its own waitloom.app subdomain.",
+				tag: "Coming soon",
 			},
 			{
 				title: "MCP support",
 				body: "Create, edit and publish your page from Claude Code or Cursor — and have your agent read the signup numbers straight back to you.",
-				tag: "At launch",
+				tag: "",
 			},
 		],
 	},
@@ -133,12 +135,12 @@ export const en = {
 		title: "Ship your page without leaving your editor.",
 		body: "Waitloom speaks MCP. Drop the server into Claude Code, Cursor, or any MCP client, and your agent can spin up a pre-launch page, publish it to a subdomain, and pull today's signups — from the terminal you already have open.",
 		bullets: [
-			"create_project · update_page · publish · list_subscribers",
+			"create_project · update_page · set_questions · publish · list_subscribers · get_stats",
 			"No tab-switching to a dashboard while you're deep in code",
 			"Works with any MCP-compatible client",
 		],
-		note: "Ships with v1. The config will look like this:",
-		badge: "At launch",
+		note: "Create a token under MCP in your dashboard, then add the server:",
+		badge: "Live",
 	},
 	faq: {
 		eyebrow: "FAQ",
@@ -150,36 +152,37 @@ export const en = {
 			},
 			{
 				q: "What do I get for free?",
-				a: "Five projects, each on its own yourname.waitloom.app subdomain, with the waitlist, basic analytics, and no cap on subscribers. Enough to test five ideas and find out whether anyone actually wants them.",
+				a: "Everything, while it's in beta — unlimited projects and unlimited subscribers, each page on its own yourname.waitloom.app subdomain, with the waitlist, the validation questions and the analytics. Paid plans show up when the free tier starts costing me real money.",
 			},
 			{
 				q: "Can I use my own domain?",
-				a: "Yes, on the one-time paid plan. Add a CNAME record and SSL plus domain verification happen automatically.",
+				a: "Not yet. Every page gets a yourname.waitloom.app subdomain today, and custom domains are the next thing on the list.",
 			},
 			{
 				q: "Who owns the emails I collect?",
 				a: "You do. Export the full list as CSV any time, answers to your validation questions included. We never email your subscribers on our own.",
 			},
 			{
-				q: "When does it launch?",
-				a: "The first version is a few weeks out. Join the waitlist and you'll get one email the day it's live, plus early access before it opens up.",
+				q: "How long does it take to put a page up?",
+				a: "Under ten minutes if you already know what your product does. Name it, describe it in a sentence, pick a template, edit the parts you care about, publish. It is live on its subdomain the moment you hit publish.",
 			},
 		],
 	},
 	founder: {
 		eyebrow: "Who's building this",
 		title: "One developer, working in the open.",
-		body: "I've built the same throwaway launch page too many times — Carrd for the page, Tally for the questions, a spreadsheet for the emails, and a Zap holding it all together. Waitloom is that stack collapsed into one page you can put up before the product exists. I'm building it in public and shipping the first version in a few weeks.",
+		body: "I've built the same throwaway launch page too many times — Carrd for the page, Tally for the questions, a spreadsheet for the emails, and a Zap holding it all together. Waitloom is that stack collapsed into one page you can put up before the product exists. The first version is live, and I'm still building it in the open.",
 		link: "Follow along on X",
 		linkHref: "https://x.com/landarX",
 	},
 	closing: {
 		title: "Put something up before you write the code.",
 		subtitle: "Join the waitlist and be there on day one.",
+		subtitleLive: "Create your page, publish it, and start collecting today.",
 	},
 	footer: {
 		privacy:
-			"Your email is only used to tell you when Waitloom is live. Unsubscribe any time.",
+			"The subscribers you collect are yours. Export them as CSV any time; we never email them on our own.",
 		rights: "Waitloom. Built in public.",
 	},
 } ;
@@ -199,11 +202,13 @@ export const zh: Dict = {
 		mcp: "MCP",
 		faq: "常见问题",
 		cta: "加入 Waitlist",
+		ctaApp: "创建你的页面",
+		signIn: "登录",
 		langLabel: "EN",
 		langHref: "/",
 	},
 	hero: {
-		badge: "预发布 · 公开地做",
+		badge: "已上线 · 公开地做",
 		title: "在发布之前，先发布。",
 		subtitle:
 			"几分钟做出一个漂亮的预发布页面，验证你的想法，攒下第一批用户。",
@@ -290,13 +295,13 @@ export const zh: Dict = {
 			},
 			{
 				title: "自定义域名",
-				body: "把 launch.yourproduct.com 指过来就行。SSL、HTTPS 和域名验证都自动完成。",
-				tag: "",
+				body: "接下来会做：把 launch.yourproduct.com 指过来，SSL 和域名验证自动完成。目前每个页面都有自己的 waitloom.app 子域名。",
+				tag: "即将上线",
 			},
 			{
 				title: "支持 MCP",
 				body: "在 Claude Code、Cursor 里直接建页面、改页面、发布，还能让 agent 把注册数据直接读回来给你。",
-				tag: "上线即有",
+				tag: "",
 			},
 		],
 	},
@@ -305,12 +310,12 @@ export const zh: Dict = {
 		title: "不用离开编辑器，就能把页面发出去。",
 		body: "Waitloom 原生支持 MCP。把 server 装进 Claude Code、Cursor 或任意 MCP 客户端，你的 agent 就能建好预发布页面、发布到子域名、拉取今天的注册数据 —— 全都在你本来就开着的终端里完成。",
 		bullets: [
-			"create_project · update_page · publish · list_subscribers",
+			"create_project · update_page · set_questions · publish · list_subscribers · get_stats",
 			"写代码写到一半，不用切去开后台",
 			"兼容任意 MCP 客户端",
 		],
-		note: "随 v1 一起上线。配置大概长这样：",
-		badge: "上线即有",
+		note: "在后台的 MCP 页面创建一个 token，然后把 server 加进去：",
+		badge: "已上线",
 	},
 	faq: {
 		eyebrow: "常见问题",
@@ -322,35 +327,36 @@ export const zh: Dict = {
 			},
 			{
 				q: "免费版能用什么？",
-				a: "五个 project，每个都有自己的 yourname.waitloom.app 子域名，含 waitlist 和基础数据，订阅者数量不限。足够你同时验证五个想法，看看到底有没有人要。",
+				a: "Beta 期间全都能用 —— project 不限个数，订阅者不限数量，每个页面有自己的 yourname.waitloom.app 子域名，含 waitlist、验证问题和数据面板。等免费额度开始真的花我钱了，才会有付费版。",
 			},
 			{
 				q: "能绑我自己的域名吗？",
-				a: "可以，买断制付费版支持。加一条 CNAME 记录，SSL 和域名验证会自动完成。",
+				a: "还不行。目前每个页面都有自己的 yourname.waitloom.app 子域名，自定义域名是接下来要做的第一件事。",
 			},
 			{
 				q: "收集到的邮箱归谁？",
 				a: "归你。随时导出完整 CSV，包含验证问题的答案。我们不会以自己的名义给你的订阅者发任何邮件。",
 			},
 			{
-				q: "什么时候上线？",
-				a: "第一版还有几周。加入 waitlist，上线当天你会收到一封邮件，并且在正式开放之前拿到早期访问。",
+				q: "做一个页面要多久？",
+				a: "如果你已经清楚自己在做什么，十分钟以内。起个名字，一句话描述它，挑一个模板，改你在意的那几处，然后发布。点下发布的那一刻，页面就在子域名上活着了。",
 			},
 		],
 	},
 	founder: {
 		eyebrow: "谁在做这个",
 		title: "一个开发者，公开地做。",
-		body: "同一套一次性落地页我已经重复搭过太多次 —— Carrd 做页面，Tally 收问题，表格存邮箱，再拿一个 Zap 把它们粘在一起。Waitloom 就是把这一整套压缩成一个页面，让你在产品还不存在的时候就能挂出去。我会公开地做，几周后发出第一版。",
+		body: "同一套一次性落地页我已经重复搭过太多次 —— Carrd 做页面，Tally 收问题，表格存邮箱，再拿一个 Zap 把它们粘在一起。Waitloom 就是把这一整套压缩成一个页面，让你在产品还不存在的时候就能挂出去。第一版已经上线了，后面我会继续公开地做。",
 		link: "在 X 上关注进展",
 		linkHref: "https://x.com/landarX",
 	},
 	closing: {
 		title: "在写代码之前，先把东西挂出去。",
 		subtitle: "加入 Waitlist，上线第一天就在场。",
+		subtitleLive: "创建你的页面，发布出去，今天就开始收集用户。",
 	},
 	footer: {
-		privacy: "你的邮箱只会被用来通知你 Waitloom 上线，随时可以退订。",
+		privacy: "你收集到的订阅者归你。随时导出 CSV，我们不会以自己的名义给他们发任何邮件。",
 		rights: "Waitloom. 公开地做。",
 	},
 };

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./logo";
 import type { Dict } from "@/i18n/dictionaries";
+import { APP_LAUNCHED } from "@/lib/site";
 
 export function SiteHeader({ dict }: { dict: Dict }) {
 	const links = [
@@ -36,18 +37,29 @@ export function SiteHeader({ dict }: { dict: Dict }) {
 					))}
 				</nav>
 
-				<div className="ml-auto flex items-center gap-2 md:ml-0">
+				<div className="ml-auto flex items-center gap-1 sm:gap-2 md:ml-0">
 					<Link
 						href={dict.nav.langHref}
 						className="rounded-full px-2.5 py-1.5 text-[13px] text-muted transition-colors hover:bg-ink-3 hover:text-fg"
 					>
 						{dict.nav.langLabel}
 					</Link>
+					{/*
+					  Always present, whatever APP_LAUNCHED says: before launch the big
+					  CTA is still the waitlist, but anyone who already has an account
+					  needs a way back in.
+					*/}
 					<a
-						href="#join"
+						href="/login"
+						className="rounded-full px-2.5 py-1.5 text-[13px] text-muted transition-colors hover:bg-ink-3 hover:text-fg"
+					>
+						{dict.nav.signIn}
+					</a>
+					<a
+						href={APP_LAUNCHED ? "/login" : "#join"}
 						className="rounded-full bg-fg px-3.5 py-1.5 text-[13px] font-medium text-ink transition-opacity hover:opacity-90"
 					>
-						{dict.nav.cta}
+						{APP_LAUNCHED ? dict.nav.ctaApp : dict.nav.cta}
 					</a>
 				</div>
 			</div>

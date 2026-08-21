@@ -24,7 +24,7 @@ export function RootShell({
 	return (
 		<html lang={lang} suppressHydrationWarning>
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+				className={`${geistSans.variable} ${geistMono.variable} app-shell antialiased`}
 			>
 				{children}
 			</body>

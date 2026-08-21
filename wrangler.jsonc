@@ -12,6 +12,13 @@
 		{
 			"pattern": "waitloom.app",
 			"custom_domain": true
+		},
+		// Published pages live at <slug>.waitloom.app. Custom Domains cannot be
+		// wildcards, so this has to be a route, and it needs a proxied `*` DNS
+		// record on the zone to have anything to attach to.
+		{
+			"pattern": "*.waitloom.app/*",
+			"zone_name": "waitloom.app"
 		}
 	],
 	"vars": {
@@ -23,6 +30,14 @@
 			"database_name": "waitloom-db",
 			"database_id": "2630d814-43e2-46d5-abba-d9b7e89eb10f",
 			"migrations_dir": "migrations"
+		}
+	],
+	// Logos, screenshots and avatars founders upload in the editor. Create it
+	// once with: npx wrangler r2 bucket create waitloom-media
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "waitloom-media"
 		}
 	],
 	"assets": {

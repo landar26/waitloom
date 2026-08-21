@@ -19,19 +19,27 @@
 
 html {
 	scroll-behavior: smooth;
-	color-scheme: dark;
 }
 
 body {
-	background: var(--color-ink);
-	color: var(--color-fg);
-	font-family: var(--font-sans), ui-sans-serif, system-ui, "PingFang SC",
-		"Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
 	-webkit-font-smoothing: antialiased;
 	overflow-x: hidden;
 }
 
-::selection {
+/*
+ * Waitloom's own chrome — marketing site, dashboard, admin. Published pages
+ * carry the palette their founder chose, so none of this may live on `body`.
+ */
+.app-shell {
+	background: var(--color-ink);
+	color: var(--color-fg);
+	color-scheme: dark;
+	font-family: var(--font-sans), ui-sans-serif, system-ui, "PingFang SC",
+		"Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+	min-height: 100vh;
+}
+
+.app-shell ::selection {
 	background: var(--color-brand);
 	color: #1a0d05;
 }

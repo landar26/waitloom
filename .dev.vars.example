@@ -1,0 +1,17 @@
+# Copy to .dev.vars and fill in. The same values are used locally and in
+# production — `npm run secrets:push` reads this file's real counterpart.
+#
+# .dev.vars is gitignored; this example is not. Never put real values here.
+
+# Any username, this password, for /admin and /api/admin/*.
+ADMIN_PASSWORD=
+
+# Salt for the SHA-256 IP hashes behind rate limiting and visitor dedupe.
+# Changing it resets both; it is never possible to recover an IP from a hash.
+IP_SALT=
+
+# Google Cloud → Credentials → OAuth client ID → Web application.
+# Redirect URIs: https://waitloom.app/api/auth/callback/google
+#                http://localhost:3000/api/auth/callback/google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
