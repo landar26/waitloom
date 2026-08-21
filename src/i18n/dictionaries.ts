@@ -168,6 +168,13 @@ export const en = {
 			},
 		],
 	},
+	discord: {
+		eyebrow: "Feedback",
+		title: "Something broken, or missing?",
+		body: "Waitloom is early, and the fastest way to get something fixed is to say it out loud. Bug reports, missing features, half-formed ideas — the Discord is where they land, and where you can see what I'm working on next.",
+		cta: "Join the Discord",
+		footer: "Discord",
+	},
 	founder: {
 		eyebrow: "Who's building this",
 		title: "One developer, working in the open.",
@@ -342,6 +349,13 @@ export const zh: Dict = {
 				a: "如果你已经清楚自己在做什么，十分钟以内。起个名字，一句话描述它，挑一个模板，改你在意的那几处，然后发布。点下发布的那一刻，页面就在子域名上活着了。",
 			},
 		],
+	},
+	discord: {
+		eyebrow: "问题反馈",
+		title: "哪里坏了，或者少了什么？",
+		body: "Waitloom 还很早，想让一个问题被修掉，最快的方式就是说出来。Bug、缺的功能、还没想清楚的点子，都可以丢进 Discord，那里也能看到我接下来在做什么。",
+		cta: "加入 Discord",
+		footer: "Discord",
 	},
 	founder: {
 		eyebrow: "谁在做这个",

@@ -43,6 +43,20 @@ export function TokenManager({
 
 	const cli = `claude mcp add --transport http waitloom ${endpoint} --header "Authorization: Bearer ${fresh ?? "wl_..."}"`;
 
+	// Read by a model, not a person, so it stays English in both dashboard languages.
+	// Before a token is minted the header line is a placeholder, so the prompt has to
+	// say where the real one comes from — otherwise the agent asks for "a token" blind.
+	const whereFrom = fresh
+		? ""
+		: "\nIf the token above is still wl_..., ask me for the real one — I create it on the MCP page of my Waitloom dashboard.";
+
+	const agentPrompt = `Please help me configure Waitloom MCP for agent access.
+
+MCP server URL: ${endpoint}
+Auth header: Authorization: Bearer ${fresh ?? "wl_..."}${whereFrom}
+
+After setup, use MCP tools whenever you need to operate this Waitloom workspace.`;
+
 	async function copy(key: string, value: string) {
 		try {
 			await navigator.clipboard.writeText(value);
@@ -225,6 +239,24 @@ export function TokenManager({
 						className="shrink-0 rounded-full border border-line px-4 py-2 text-[13px] text-muted transition-colors hover:border-dim hover:text-fg"
 					>
 						{copied === "cli" ? t.copied : t.copy}
+					</button>
+				</div>
+			</section>
+
+			<section>
+				<h2 className="text-lg font-semibold tracking-tight">{t.agent}</h2>
+				<p className="mt-2 text-[13.5px] leading-relaxed text-muted">{t.agentHint}</p>
+
+				<div className="mt-4 flex items-start gap-2">
+					<pre className="min-w-0 flex-1 overflow-x-auto whitespace-pre-wrap rounded-xl border border-line bg-ink-2 px-4 py-3.5 font-mono text-[12px] leading-relaxed text-muted">
+						{agentPrompt}
+					</pre>
+					<button
+						type="button"
+						onClick={() => copy("prompt", agentPrompt)}
+						className="shrink-0 rounded-full border border-line px-4 py-2 text-[13px] text-muted transition-colors hover:border-dim hover:text-fg"
+					>
+						{copied === "prompt" ? t.copied : t.copy}
 					</button>
 				</div>
 			</section>

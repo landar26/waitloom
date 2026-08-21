@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Logo } from "./logo";
+import { DiscordIcon } from "./discord-icon";
 import type { Dict } from "@/i18n/dictionaries";
+import { DISCORD_URL } from "@/lib/site";
 
 export function SiteFooter({ dict }: { dict: Dict }) {
 	return (
@@ -17,15 +19,29 @@ export function SiteFooter({ dict }: { dict: Dict }) {
 						{dict.footer.privacy}
 					</p>
 				</div>
-				<div className="flex items-center gap-4 text-[13px] text-dim">
+				<div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-dim">
 					<Link href={dict.nav.langHref} className="hover:text-fg">
 						{dict.nav.langLabel}
 					</Link>
-					<span className="text-line">·</span>
+					<span className="hidden text-line lg:inline">·</span>
 					<a href="/login" className="hover:text-fg">
 						{dict.nav.signIn}
 					</a>
-					<span className="text-line">·</span>
+					{DISCORD_URL && (
+						<>
+							<span className="hidden text-line lg:inline">·</span>
+							<a
+								href={DISCORD_URL}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1.5 hover:text-fg"
+							>
+								<DiscordIcon className="h-3.5 w-3.5" />
+								{dict.discord.footer}
+							</a>
+						</>
+					)}
+					<span className="hidden text-line lg:inline">·</span>
 					<span>
 						© {new Date().getFullYear()} {dict.footer.rights}
 					</span>

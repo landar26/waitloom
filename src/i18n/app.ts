@@ -6,6 +6,7 @@ export const appEn = {
 		projects: "Projects",
 		newProject: "New project",
 		mcp: "MCP",
+		feedback: "Feedback",
 		settings: "Settings",
 		language: "Language",
 		logout: "Sign out",
@@ -220,6 +221,10 @@ export const appEn = {
 		connectHint:
 			"Paste this into your MCP client's config, with the token in place of wl_….",
 		cli: "Or, in Claude Code:",
+		agent: "Or let an agent set it up",
+		agentHint:
+			"Paste this to Claude Code, Cursor or any agent with file access — it will " +
+			"wire the server up itself.",
 		tools: "Tools",
 		toolsHint:
 			"list_projects · get_project · create_project · update_page · set_questions · publish · list_subscribers · get_stats",
@@ -238,6 +243,7 @@ export const appZh: AppDict = {
 		projects: "项目",
 		newProject: "新建项目",
 		mcp: "MCP",
+		feedback: "问题反馈",
 		settings: "设置",
 		language: "语言",
 		logout: "退出登录",
@@ -449,6 +455,9 @@ export const appZh: AppDict = {
 		connect: "连接客户端",
 		connectHint: "把下面这段粘贴进 MCP 客户端的配置，把 wl_… 换成你的 token。",
 		cli: "或者在 Claude Code 里：",
+		agent: "或者让 agent 帮你配置",
+		agentHint:
+			"把这段发给 Claude Code、Cursor 或任意能改文件的 agent，它会自己把服务器接好。",
 		tools: "工具",
 		toolsHint:
 			"list_projects · get_project · create_project · update_page · set_questions · publish · list_subscribers · get_stats",

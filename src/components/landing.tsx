@@ -4,6 +4,7 @@ import { TemplateShowcase } from "./template-showcase";
 import { Features } from "./features";
 import { McpSection } from "./mcp-section";
 import { Faq } from "./faq";
+import { DiscordCta } from "./discord-cta";
 import { Founder } from "./founder";
 import { ClosingCta } from "./closing-cta";
 import { SiteFooter } from "./site-footer";
@@ -29,6 +30,7 @@ export function Landing({ lang }: { lang: Lang }) {
 				<McpSection dict={dict} />
 				<div className="hairline mx-auto h-px max-w-6xl" />
 				<Faq dict={dict} />
+				<DiscordCta dict={dict} />
 				<Founder dict={dict} />
 				<ClosingCta dict={dict} />
 			</main>

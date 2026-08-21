@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DiscordIcon } from "@/components/discord-icon";
 import type { AppDict } from "@/i18n/app";
 import type { Lang } from "@/i18n/dictionaries";
+import { DISCORD_URL } from "@/lib/site";
 
 const ROW =
 	"flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors hover:bg-ink-3";
@@ -130,6 +132,19 @@ export function SettingsMenu({
 					>
 						{t.mcp}
 					</a>
+
+					{DISCORD_URL && (
+						<a
+							href={DISCORD_URL}
+							target="_blank"
+							rel="noopener noreferrer"
+							role="menuitem"
+							className={`${ROW} text-muted hover:text-fg`}
+						>
+							{t.feedback}
+							<DiscordIcon className="h-4 w-4 text-dim" />
+						</a>
+					)}
 
 					<div className="my-1.5 h-px bg-line-soft" />
 
