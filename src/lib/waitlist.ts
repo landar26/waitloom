@@ -1,6 +1,16 @@
 import { PRODUCT_TYPES, type ProductType } from "@/i18n/dictionaries";
 import { clampText } from "./validation";
-import { DAY_MS, TZ_OFFSET_MS, dayKey, startOfToday } from "./day";
+import { TZ_OFFSET_MS } from "./day";
+import {
+	countRows,
+	edges,
+	fillSeries,
+	seriesStart,
+	toShare,
+	type CountRow,
+	type DayPoint,
+	type Share,
+} from "./series";
 
 export const QUESTION_KEYS = ["building", "pain"] as const;
 export type QuestionKey = (typeof QUESTION_KEYS)[number];
@@ -159,8 +169,8 @@ export async function listSubscribers(
 	return results ?? [];
 }
 
-export type Share = { label: string; count: number; pct: number };
-export type DayPoint = { day: string; count: number };
+// Re-exported so existing importers (admin page, dashboard) keep one source.
+export type { DayPoint, Share };
 
 export type Stats = {
 	total: number;
@@ -178,15 +188,8 @@ export type Stats = {
 	utmCampaign: Share[];
 };
 
-type CountRow = { label: string; n: number };
-
-function countRows(result: { results?: unknown[] }): CountRow[] {
-	return (result.results ?? []) as CountRow[];
-}
-
 export async function getStats(db: D1Database): Promise<Stats> {
-	const midnight = startOfToday();
-	const seriesStart = midnight - (SERIES_DAYS - 1) * DAY_MS;
+	const windowStart = seriesStart(SERIES_DAYS);
 
 	const [
 		totalRow,
@@ -207,7 +210,7 @@ export async function getStats(db: D1Database): Promise<Stats> {
 				 GROUP BY label
 				 ORDER BY label`,
 			)
-			.bind(TZ_OFFSET_MS, seriesStart),
+			.bind(TZ_OFFSET_MS, windowStart),
 		db.prepare(
 			"SELECT COALESCE(source, 'direct') AS label, COUNT(*) AS n FROM subscribers GROUP BY label ORDER BY n DESC",
 		),
@@ -233,24 +236,7 @@ export async function getStats(db: D1Database): Promise<Stats> {
 
 	const total = Number((totalRow.results?.[0] as { n?: number })?.n ?? 0);
 
-	const toShare = (rows: CountRow[], denominator: number): Share[] =>
-		rows.map((r) => ({
-			label: r.label,
-			count: Number(r.n),
-			pct: denominator ? Math.round((Number(r.n) / denominator) * 100) : 0,
-		}));
-
-	// SQL only returns days that have signups; fill the rest with zeroes.
-	const byDay = new Map<string, number>();
-	for (const row of countRows(seriesRows)) byDay.set(row.label, Number(row.n));
-
-	const series: DayPoint[] = [];
-	for (let i = SERIES_DAYS - 1; i >= 0; i--) {
-		const day = dayKey(midnight - i * DAY_MS);
-		series.push({ day, count: byDay.get(day) ?? 0 });
-	}
-
-	const sum = (points: DayPoint[]) => points.reduce((n, p) => n + p.count, 0);
+	const series = fillSeries(countRows(seriesRows), SERIES_DAYS);
 
 	const answeredBy = new Map<string, number>();
 	for (const row of countRows(answeredRows))
@@ -270,10 +256,7 @@ export async function getStats(db: D1Database): Promise<Stats> {
 
 	return {
 		total,
-		today: series[series.length - 1]?.count ?? 0,
-		yesterday: series[series.length - 2]?.count ?? 0,
-		last7: sum(series.slice(-7)),
-		prev7: sum(series.slice(-14, -7)),
+		...edges(series),
 		series,
 		sources: toShare(countRows(sourceRows), total),
 		audience: toShare(audienceRaw, audienceTotal),

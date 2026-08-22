@@ -1,4 +1,13 @@
-import { DAY_MS, TZ_OFFSET_MS, dayKey, startOfToday } from "./day";
+import { TZ_OFFSET_MS } from "./day";
+import {
+	countRows,
+	edges,
+	fillSeries,
+	seriesStart,
+	toShare,
+	type DayPoint,
+	type Share,
+} from "./series";
 import { clampText } from "./validation";
 import type { Question } from "./projects";
 
@@ -237,8 +246,8 @@ export async function deleteSubscriber(
 	return (result.meta.changes ?? 0) > 0;
 }
 
-export type DayPoint = { day: string; count: number };
-export type Share = { label: string; count: number; pct: number };
+// Re-exported so existing importers (the dashboard pages) keep one source.
+export type { DayPoint, Share };
 
 export type Stats = {
 	total: number;
@@ -252,22 +261,11 @@ export type Stats = {
 	utmCampaign: Share[];
 };
 
-type CountRow = { label: string; n: number };
-
-function toShare(rows: CountRow[], denominator: number): Share[] {
-	return rows.map((r) => ({
-		label: r.label,
-		count: Number(r.n),
-		pct: denominator ? Math.round((Number(r.n) / denominator) * 100) : 0,
-	}));
-}
-
 export async function getStats(
 	db: D1Database,
 	projectId: string,
 ): Promise<Stats> {
-	const midnight = startOfToday();
-	const seriesStart = midnight - (SERIES_DAYS - 1) * DAY_MS;
+	const windowStart = seriesStart(SERIES_DAYS);
 
 	const [totalRow, seriesRows, sourceRows, campaignRows] = await db.batch<
 		Record<string, unknown>
@@ -283,7 +281,7 @@ export async function getStats(
 				 WHERE project_id = ? AND created_at >= ?
 				 GROUP BY label ORDER BY label`,
 			)
-			.bind(TZ_OFFSET_MS, projectId, seriesStart),
+			.bind(TZ_OFFSET_MS, projectId, windowStart),
 		db
 			.prepare(
 				`SELECT COALESCE(source, 'direct') AS label, COUNT(*) AS n
@@ -303,29 +301,14 @@ export async function getStats(
 
 	const total = Number((totalRow.results?.[0] as { n?: number })?.n ?? 0);
 
-	// SQL only returns days that had signups; fill the rest with zeroes.
-	const byDay = new Map<string, number>();
-	for (const row of (seriesRows.results ?? []) as CountRow[]) {
-		byDay.set(row.label, Number(row.n));
-	}
-
-	const series: DayPoint[] = [];
-	for (let i = SERIES_DAYS - 1; i >= 0; i--) {
-		const day = dayKey(midnight - i * DAY_MS);
-		series.push({ day, count: byDay.get(day) ?? 0 });
-	}
-
-	const sum = (points: DayPoint[]) => points.reduce((n, p) => n + p.count, 0);
+	const series = fillSeries(countRows(seriesRows), SERIES_DAYS);
 
 	return {
 		total,
-		today: series[series.length - 1]?.count ?? 0,
-		yesterday: series[series.length - 2]?.count ?? 0,
-		last7: sum(series.slice(-7)),
-		prev7: sum(series.slice(-14, -7)),
+		...edges(series),
 		series,
-		sources: toShare((sourceRows.results ?? []) as CountRow[], total),
-		utmCampaign: toShare((campaignRows.results ?? []) as CountRow[], total),
+		sources: toShare(countRows(sourceRows), total),
+		utmCampaign: toShare(countRows(campaignRows), total),
 	};
 }
 

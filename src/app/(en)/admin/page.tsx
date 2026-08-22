@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getDb } from "@/lib/db";
 import { SERIES_DAYS, getStats, listSubscribers, type DayPoint } from "@/lib/waitlist";
 import { PROJECT_ID, getTraffic, type Traffic } from "@/lib/analytics";
+import { getProductStats } from "@/lib/product";
 import {
 	Bars,
 	SourceTable,
@@ -21,12 +22,24 @@ export const metadata: Metadata = {
 const PRODUCT_LABELS = en.productTypes as Record<string, string>;
 const LANG_LABELS: Record<string, string> = { en: "English", zh: "中文" };
 
+/** Percent of a whole, or an em dash when there is no whole to divide by. */
+function pct(part: number, whole: number): string {
+	return whole ? `${Math.round((part / whole) * 100)}%` : "—";
+}
+
+function wow(last7: number, prev7: number): string {
+	if (!prev7) return "no prior week";
+	const delta = Math.round(((last7 - prev7) / prev7) * 100);
+	return `${last7 >= prev7 ? "+" : "−"}${Math.abs(delta)}% vs prior 7`;
+}
+
 export default async function AdminPage() {
 	const db = await getDb();
-	const [stats, traffic, subscribers] = await Promise.all([
+	const [stats, traffic, subscribers, product] = await Promise.all([
 		getStats(db),
 		getTraffic(db, PROJECT_ID, SERIES_DAYS),
 		listSubscribers(db, 500),
+		getProductStats(db),
 	]);
 
 	const conversionNote = `${stats.sources.length} source${
@@ -37,16 +50,20 @@ export default async function AdminPage() {
 		? Math.round((stats.answered.building / stats.total) * 100)
 		: 0;
 
-	const weekOverWeek = stats.prev7
-		? `${stats.last7 >= stats.prev7 ? "+" : "−"}${Math.abs(
-				Math.round(((stats.last7 - stats.prev7) / stats.prev7) * 100),
-			)}% vs prior 7`
-		: "no prior week";
+	const weekOverWeek = wow(stats.last7, stats.prev7);
 
 	const signups30 = stats.series.reduce((n, d) => n + d.count, 0);
 	const conversion = traffic.visitors
 		? `${((signups30 / traffic.visitors) * 100).toFixed(1)}%`
 		: "—";
+
+	const u = product.users;
+	const paid = product.plans
+		.filter((p) => p.label !== "free")
+		.reduce((n, p) => n + p.count, 0);
+	const activatedPct = pct(product.funnel.activated, u.total);
+	const publisherPct = pct(product.funnel.publishers, u.total);
+	const perUser = u.total ? (product.projects.total / u.total).toFixed(1) : "—";
 
 	// Campaigns are the finer cut; fall back to medium until campaigns are tagged.
 	const hasCampaigns = stats.utmCampaign.length > 0;
@@ -190,6 +207,75 @@ export default async function AdminPage() {
 						))}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="mt-14 border-t border-line pt-10">
+				<h2 className="text-2xl font-semibold tracking-tight">Product</h2>
+				<p className="mt-1 text-[13.5px] text-dim">
+					{u.total} registered · {product.projects.total} project
+					{product.projects.total === 1 ? "" : "s"} · days in UTC+8
+				</p>
+
+				<div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					<Stat
+						label="Registered"
+						value={u.total}
+						hint={paid ? `${paid} on a paid plan` : "all on free"}
+					/>
+					<Stat
+						label="Today"
+						value={`+${u.today}`}
+						hint={`yesterday +${u.yesterday}`}
+					/>
+					<Stat
+						label="Last 7 days"
+						value={`+${u.last7}`}
+						hint={wow(u.last7, u.prev7)}
+					/>
+					<Stat
+						label="Active (30d)"
+						value={product.funnel.active30}
+						hint={`${product.funnel.active7} in last 7 · edited a project`}
+					/>
+				</div>
+
+				<div className="mt-4 grid gap-4 sm:grid-cols-3">
+					<Stat
+						label="Activated"
+						value={activatedPct}
+						hint={`${product.funnel.activated} of ${u.total} created a project`}
+					/>
+					<Stat
+						label="Published"
+						value={publisherPct}
+						hint={`${product.funnel.publishers} of ${u.total} users · ${product.projects.published} projects live`}
+					/>
+					<Stat
+						label="Projects / user"
+						value={perUser}
+						hint={`${product.projects.drafts} still draft`}
+					/>
+				</div>
+
+				<div className="mt-4 grid gap-4 lg:grid-cols-2">
+					<Sparkbars
+						title="Registrations · last 30 days"
+						points={u.series}
+						empty="No signups in the last 30 days."
+					/>
+					<Sparkbars
+						title="Projects created · last 30 days"
+						points={product.projects.series}
+						tone="bg-brand-2"
+						empty="No projects created in the last 30 days."
+					/>
+				</div>
+
+				{product.plans.length > 1 && (
+					<div className="mt-4 grid gap-4 lg:grid-cols-2">
+						<Bars title="Plans" rows={product.plans} />
+					</div>
+				)}
 			</div>
 		</div>
 	);
